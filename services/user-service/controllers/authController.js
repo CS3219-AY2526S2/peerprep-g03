@@ -1,5 +1,6 @@
 const { createUser, getUserByUsername } = require("../models/userModel");
 const { validateEmail, validatePassword, validateUsername } = require("../utils/validation");
+const { decryptEmail } = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
@@ -37,7 +38,8 @@ exports.loginUser = async (req, res) => {
     // Check if account is temporarily locked
     if (user.locked_until && new Date(user.locked_until) > now) {
       return res.status(403).json({ 
-        error: `Account locked. Try again at ${new Date(user.locked_until).toLocaleTimeString()}` 
+        //${new Date(user.locked_until).toLocaleTimeString()}`
+        error: `Account locked. Try again at ${new Date(user.locked_until).toISOString()}`
       });
     }
 
@@ -54,7 +56,7 @@ exports.loginUser = async (req, res) => {
       }
 
       // Lock account for 5 minutes if failed attempts >= 5
-      const lockedUntil = failedAttempts >= 5 ? new Date(now.getTime() + 5 * 60 * 1000) : null;
+      const lockedUntil = failedAttempts >= 4 ? new Date(now.getTime() + 5 * 60 * 1000) : null;
 
       // Update user in DB
       await pool.query(
@@ -76,7 +78,7 @@ exports.loginUser = async (req, res) => {
     res.json({
       username: user.username,
       role: user.role,
-      email: "",                     // blank to avoid frontend crash
+      email: decryptEmail(user.email),                     // blank to avoid frontend crash
       proficiency: user.proficiency || "",
       JWToken: token
     });

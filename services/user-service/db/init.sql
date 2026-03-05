@@ -16,7 +16,7 @@ INSERT INTO users (username, password, email, role)
 VALUES (
     'admin01',
     '$2a$12$.cjqGJGvZFpIhiyHocUh8.6BwCFudVALxrt8eSxQBroWzc/fh7GLy',
-    'admin@example.com',
+    'e0279672d2719576edc54f1708d04193:b1f9435d817b086741f74dc078c47acfbc3a0cfc0be5d23e3dda2ff9c7cff8f5', -- admin@example.com
     'Admin'
 )
 ON CONFLICT (username) DO NOTHING; -- only one instance of admin01
