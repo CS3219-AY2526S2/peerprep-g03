@@ -17,7 +17,7 @@ services:
   #   user-db                -> question-db
   #   user-db-data           -> question-db-data
   #   ./services/user-service -> ./services/question-service
-  #################################
+  ################################
   user-db:
     image: postgres:15
     container_name: user-db
@@ -31,18 +31,18 @@ services:
     networks:
       - app-network
 
-  # question-db:
-  #   image: postgres:15
-  #   container_name: question-db
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: secret
-  #     POSTGRES_DB: questiondb
-  #   volumes:
-  #     - question-db-data:/var/lib/postgresql/data
-  #     - ./services/question-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   networks:
-  #     - app-network
+  question-db:
+    image: postgres:15
+    container_name: question-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: questiondb
+    volumes:
+      - question-db-data:/var/lib/postgresql/data
+      - ./services/question-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
 
   # ---------- Backends ----------
   #################################
@@ -82,18 +82,19 @@ services:
     networks:
       - app-network
 
-  # question-service:
-  #   build: ./services/question-service
-  #   container_name: question-service
-  #   depends_on:
-  #     - question-db
-  #   environment:
-  #     DATABASE_URL: postgres://postgres:secret@question-db:5432/questiondb
-  #     PORT: 3000
-  #   ports:
-  #     - "3001:3000"
-  #   networks:
-  #     - app-network
+  question-service:
+    build: ./services/question-service
+    container_name: question-service
+    depends_on:
+      - question-db
+    environment:
+      DATABASE_URL: postgres://postgres:secret@question-db:5432/questiondb
+      PORT: 3001
+      JWT_SECRET: supersecretjwtkey
+    ports:
+      - "3001:3001"
+    networks:
+      - app-network
 
   # ---------- Frontend ----------
   frontend:
@@ -101,10 +102,10 @@ services:
     container_name: frontend
     depends_on:
       - user-service
-      # - question-service
+      - question-service
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
-      # VITE_QUESTION_SERVICE_URL: http://question-service:3001
+      VITE_QUESTION_SERVICE_URL: http://question-service:3001
     ports:
       - "5173:5173"
     networks:

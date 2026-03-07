@@ -1,24 +1,29 @@
-import { mockMultipleQuestionRecords } from '../../mocks/data'
+
+import axios from 'axios';
+const API_URL = 'http://localhost:3001/api/questions';
 
 export async function getQuestionDetail(questionId: string){
     await new Promise((resolve) => setTimeout(resolve, 500));
-    if (questionId === "aa") {
-        return {questionTitle: "Title A", questionTopic: "Dynamic Programming", questionDifficulty: "Easy", question: "Question A by getQuestionDetail", id:"aa", solution: "Solution A by getQuestionDetail"}
-    }
-    return {questionTitle: "Title B", questionTopic: "Dynamic Programming", questionDifficulty: "Hard", question: "Question B by getQuestionDetail", id:"bb", solution:"Solution B by getQuestionDetail"};
+    const response = await axios.get(`${API_URL}/${questionId}`);
+    return response.data;
 }
 
 export async function getQuestion(questionTitle: string){
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return {question: "Question by getQuestion"};
+    const response = await axios.get(`${API_URL}/title/${questionTitle}`);
+    return response.data;
 }
 
 export async function deleteQuestion(questionId: string){
     await new Promise((resolve) => setTimeout(resolve, 500));
-    if (questionId == "abc") {
-        return {status: "404 Not found"}
-    }
-    return {status: "200 OK"};
+    const token = localStorage.getItem('JWToken'); 
+    const response = await axios.delete(`${API_URL}/${questionId}`, { 
+            headers: { 
+                // Must match the "Bearer <token>" format expected by middleware
+                'Authorization': `Bearer ${token}` 
+            } 
+        } );
+    return response.data;
 }
 
 export async function getSolution(questionTitle: string){
@@ -26,32 +31,61 @@ export async function getSolution(questionTitle: string){
     return {solution: "Suggested solution return by getSolution"};
 }
 
-export async function getQuestionUser(questionTopic, questionDifficulty){
+export async function getQuestionUser(questionTopic: string, questionDifficulty: string){
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return {questionTitle: "Title B", question: "Question by getQuestionUser"};
+    const response = await axios.get(`${API_URL}/random`, {
+        params: { topic: questionTopic, difficulty: questionDifficulty }
+    });
+    return response.data;
 }
 
 export async function createQuestion(questionTitle, questionTopic, questionDifficulty, question, solution) {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return {status: "200"};
+    const token = localStorage.getItem('JWToken'); 
+    const response = await axios.post(API_URL, {
+        title: questionTitle,
+        topic: questionTopic,
+        difficulty: questionDifficulty,
+        description: question,
+        solution: solution
+    },
+    { 
+            headers: { 
+                // Must match the "Bearer <token>" format expected by middleware
+                'Authorization': `Bearer ${token}` 
+            } 
+        } 
+);
+    return response.data;
 }
 
-export async function updateQuestion(questionId, questionTitle, questionTopic, questionDifficulty, question, solution) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    return {status: "200"};
-}
+// Use destructuring in the function signature
+export async function updateQuestion({ id, title, topic, difficulty, description, solution }) {
+    const token = localStorage.getItem('JWToken'); 
 
+    // Ensure topic is an array before sending to the Backend
+    const topicArray = Array.isArray(topic) ? topic : [topic];
+
+    const response = await axios.put(
+        `${API_URL}/${id}`, 
+        { 
+            title, 
+            topic: topicArray, // Send ["Strings"] instead of "Strings"
+            difficulty, 
+            description, 
+            solution 
+        }, 
+        { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        }
+    );
+    return response.data;
+}
 export async function getQuestions(username:string){
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    if (username == "user01") {
-        return {status: "401 Unauthorised"}
-    }
-    return {status: "200 OK", data : {questions: mockMultipleQuestionRecords}}
+    
+    const response = await axios.get(`${API_URL}/`);
+    return {
+        status: "200 OK",
+        data: { questions: response.data }
+    };
 }
-
-
-
-
-
-
-
