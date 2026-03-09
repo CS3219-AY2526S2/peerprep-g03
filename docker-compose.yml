@@ -1,0 +1,120 @@
+services:
+  # ---------- Databases ----------
+  #################################
+  # To create a new service database:
+  # 
+  # 1. Copy and paste user-db
+  # 2. Rename:
+  #          - service name key (user-db)
+  #          - container_name
+  #          - POSTGRES_DB
+  #          - volumes
+  #             - if using pgsql follow below
+  #                   - first line change the user-db-data to the service-db-data
+  #                   - the second line, ./services/user-service/...
+  #                                                   ^ ^ ^ --> change to the service name you are adding in.
+  # Example changes:
+  #   user-db                -> question-db
+  #   user-db-data           -> question-db-data
+  #   ./services/user-service -> ./services/question-service
+  ################################
+  user-db:
+    image: postgres:15
+    container_name: user-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: userdb
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+      - ./services/user-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  question-db:
+    image: postgres:15
+    container_name: question-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: questiondb
+    volumes:
+      - question-db-data:/var/lib/postgresql/data
+      - ./services/question-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  # ---------- Backends ----------
+  #################################
+  # Creating a new backend service
+  #
+  # 1. Copy the `user-service` block.
+  # 2. Rename:
+  #    - service key (user-service)
+  #    - container_name
+  #    - build path
+  #    - DATABASE_URL host + db name (remove if your service does not need)
+  #    - ports
+  #
+  # Example:
+  #   user-service -> order-service
+  #   ./services/user-service -> ./services/order-service
+  #   user-db:5432/userdb -> order-db:5432/orderdb
+  #
+  # NOTE: in environment, PORT can be 3000. change ports
+  # Example: ports:
+  #            - "3000:3000" -> "3001:3000"
+  #                ^ left side is for local, right side is for docker.
+  #################################
+  user-service:
+    build: ./services/user-service
+    container_name: user-service
+    depends_on:
+      - user-db
+    environment:
+      DATABASE_URL: postgres://postgres:secret@user-db:5432/userdb
+      JWT_SECRET: supersecretjwtkey
+      EMAIL_PEPPER: secretpepper
+      EMAIL_ENCRYPTION_KEY: 6f2e9b4c1a7d3f5b8e0c2d1f9a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+
+  question-service:
+    build: ./services/question-service
+    container_name: question-service
+    depends_on:
+      - question-db
+    environment:
+      DATABASE_URL: postgres://postgres:secret@question-db:5432/questiondb
+      PORT: 3001
+      JWT_SECRET: supersecretjwtkey
+    ports:
+      - "3001:3001"
+    networks:
+      - app-network
+
+  # ---------- Frontend ----------
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    depends_on:
+      - user-service
+      - question-service
+    environment:
+      VITE_USER_SERVICE_URL: http://user-service:3000
+      VITE_QUESTION_SERVICE_URL: http://question-service:3001
+    ports:
+      - "5173:5173"
+    networks:
+      - app-network
+
+volumes:
+  user-db-data:
+  question-db-data:
+
+networks:
+    app-network:
+      driver: bridge
