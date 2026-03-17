@@ -20,7 +20,7 @@ async function createQuestion(title, topic, difficulty, description, templates =
     const isDuplicate = await checkDuplicateTitle(title);
     
     if (isDuplicate) {
-        const error = new Error("Duplicate title found");
+        const error = new Error("Duplicate title found.");
         error.code = 'DUPLICATE_TITLE';
         throw error;
     }
@@ -53,6 +53,19 @@ async function createQuestion(title, topic, difficulty, description, templates =
         return { ...newQuestion, templates };
     } catch (err) {
         await client.query('ROLLBACK');
+        if (err.code === '23505') {
+        // Check which constraint was violated
+        if (err.constraint === 'questions_title_key' || err.constraint === 'idx_unique_active_title') {
+            const error = new Error("This question title already exists.");
+            error.code = 'DUPLICATE_TITLE';
+            throw error;
+        }
+        if (err.constraint === 'question_templates_question_id_language_key') {
+            const error = new Error("You have already added a template for this language.");
+            error.code = 'DUPLICATE_LANGUAGE';
+            throw error;
+        }
+    }
         throw err;
     } finally {
         client.release();
@@ -126,6 +139,19 @@ async function updateQuestion(id, title, topic, difficulty, description, templat
         return { ...res.rows[0], templates };
     } catch (err) {
         await client.query('ROLLBACK');
+        if (err.code === '23505') {
+        // Check which constraint was violated
+        if (err.constraint === 'questions_title_key' || err.constraint === 'idx_unique_active_title') {
+            const error = new Error("This question title already exists.");
+            error.code = 'DUPLICATE_TITLE';
+            throw error;
+        }
+        if (err.constraint === 'question_templates_question_id_language_key') {
+            const error = new Error("You have already added a template for this language.");
+            error.code = 'DUPLICATE_LANGUAGE';
+            throw error;
+        }
+    }
         throw err;
     } finally {
         client.release();

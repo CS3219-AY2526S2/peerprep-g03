@@ -22,9 +22,9 @@ const QuestionController = {
       
       res.status(201).json(newQuestion);
     } catch (error) {
-      if (error.code === 'DUPLICATE_TITLE') {
-        return res.status(409).json({ error: "Duplicate title. Please choose other title." });
-      }
+      if (error.code === 'DUPLICATE_TITLE' || error.code === 'DUPLICATE_LANGUAGE') {
+        return res.status(409).json({ error: error.message });
+    }
       res.status(500).json({ error: error.message });
     }
   },
@@ -74,9 +74,9 @@ const QuestionController = {
       if (!updatedQuestion) return res.status(404).json({ message: "Question not found" });
       res.status(200).json(updatedQuestion);
     } catch (error) {
-      if (error.code === 'DUPLICATE_TITLE') {
-        return res.status(409).json({ error: "Duplicate title. Please choose other title." });
-      }
+      if (error.code === 'DUPLICATE_TITLE' || error.code === 'DUPLICATE_LANGUAGE') {
+        return res.status(409).json({ error: error.message });
+    }
       res.status(500).json({ error: error.message });
     }
   },

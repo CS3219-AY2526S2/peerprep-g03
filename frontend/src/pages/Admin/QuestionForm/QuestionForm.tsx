@@ -84,6 +84,10 @@ export default function QuestionForm() {
         const updatedTemplates = [...formData.templates];
         updatedTemplates[index] = { ...updatedTemplates[index], [field]: val };
         setFormData(prev => ({ ...prev, templates: updatedTemplates }));
+
+        if (field === 'language' && serverError?.toLowerCase().includes('language')) {
+            dispatch(reset());
+        }
     };
 
     const handleSubmitClick = async () => {
@@ -124,8 +128,16 @@ export default function QuestionForm() {
             }
         });
 
+        const languages = formData.templates.map(t => t.language).filter(l => l !== '');
+        const hasDuplicateLang = new Set(languages).size !== languages.length;
+        if (hasDuplicateLang) {
+            msg += (msg ? " | " : "") + "Multiple templates found for the same language.";
+        }
+
+    
         if (serverError) {
-            msg += (msg ? " | " : "") + "Duplicate title. Please choose other title.";
+            // If the server returns a specific message, append it
+            msg += (msg ? " | " : "") + serverError;
         }
         return msg;
     }, [formData, hasTouched, serverError]);
@@ -144,8 +156,8 @@ export default function QuestionForm() {
     const handleChange = (id, value) => {
         setFormData(prev => ({ ...prev, [id]: value }));
         setHasTouched(prev => ({ ...prev, [id]: true }));
-        if (id === 'questionTitle' && serverError) {
-            dispatch(reset());
+        if (id === 'questionTitle' && serverError?.toLowerCase().includes('title')) {
+            dispatch(reset()); 
         }
     };
 
