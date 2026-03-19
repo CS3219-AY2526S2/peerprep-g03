@@ -61,4 +61,12 @@ async function getUserByUsername(username) {
   return res.rows[0];
 }
 
-module.exports = { createUser, getUserByUsername, decryptEmail };
+async function getUserById(id) {
+  const res = await pool.query(
+    "SELECT * FROM users WHERE id = $1",
+    [id]
+  );
+  return res.rows[0];
+}
+
+module.exports = { createUser, getUserByUsername, decryptEmail, getUserById };
