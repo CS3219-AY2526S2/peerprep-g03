@@ -166,16 +166,25 @@ async function deleteQuestion(id) {
   return res.rows[0];
 }
 
-async function findRandom(topic, difficulty) {
+async function findRandom(topic, difficulty, language) {
   const res = await pool.query(
-    `SELECT * FROM questions 
-     WHERE $1 = ANY(topic_tags) 
-     AND difficulty = $2 
-     AND is_deleted = FALSE 
+    `SELECT q.*, 
+        JSON_BUILD_OBJECT(
+            'language', qt.language, 
+            'starter_code', qt.starter_code, 
+            'solution_code', qt.solution_code
+        ) AS active_template
+     FROM questions q
+     INNER JOIN question_templates qt ON q.id = qt.question_id
+     WHERE $1 = ANY(q.topic_tags) 
+       AND q.difficulty = $2 
+       AND qt.language = $3  
+       AND q.is_deleted = FALSE 
      ORDER BY RANDOM() 
      LIMIT 1`,
-    [topic, difficulty]
+    [topic, difficulty, language]
   );
+  
   return res.rows[0];
 }
 

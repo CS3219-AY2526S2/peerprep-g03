@@ -84,9 +84,9 @@ const QuestionController = {
   getRandomQuestion: async (req, res) => {
     try {
 
-      const { topic, difficulty } = req.query;
+      const { topic, difficulty, language } = req.query;
 
-      const question = await QuestionModel.findRandom(topic, difficulty);
+      const question = await QuestionModel.findRandom(topic, difficulty, language);
       
       if (!question) {
         return res.status(404).json({ message: "No questions found for this topic and difficulty" });
