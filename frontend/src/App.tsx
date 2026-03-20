@@ -19,7 +19,7 @@ function App() {
 
     runRefresh();
     
-    const interval = setInterval(runRefresh, 5*60*1000); // Refresh every 5 minutes
+    const interval = setInterval(runRefresh, 60*1000); // Refresh every 5 minutes
     return () => clearInterval(interval); // Cleanup
   }, []);
 
