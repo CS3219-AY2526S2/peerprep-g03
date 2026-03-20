@@ -37,12 +37,15 @@ export default function QuestionForm() {
         questionTopic: false,
         questionDifficulty: false,
         question: false,
+        templates: false,
     });
 
     const isFormIncomplete = !formData.questionDifficulty
         || !formData.question
         || !formData.questionTitle
-        || formData.questionTopic.length === 0;
+        || formData.questionTopic.length === 0
+        || formData.templates.length === 0 // Must have at least one template
+        || formData.templates.some(t => !t.language || !t.starter_code || !t.solution_code); // All fields in all templates must be filled
 
     useEffect(() => {
         if (isEditMode && !isLoaded) {
@@ -71,8 +74,8 @@ export default function QuestionForm() {
             ...prev,
             templates: [...prev.templates, { language: '', starter_code: '', solution_code: '' }]
         }));
+        setHasTouched(prev => ({ ...prev, templates: true })); // Mark as touched
     };
-
     const handleRemoveTemplate = (index: number) => {
         setFormData(prev => ({
             ...prev,
@@ -122,11 +125,17 @@ export default function QuestionForm() {
         
         
         // Validation for templates
-        formData.templates.forEach((t, i) => {
-            if (!t.language || !t.starter_code) {
-                msg += ` | Template ${i + 1} is incomplete.`;
+        if (hasTouched.templates || isEditMode) {
+            if (formData.templates.length === 0) {
+                msg += (msg ? " | " : "") + "Please add at least one language template.";
+            } else {
+                formData.templates.forEach((t, i) => {
+                    if (!t.language || !t.starter_code || !t.solution_code) {
+                        msg += (msg ? " | " : "") + `Template ${i + 1} is incomplete.`;
+                    }
+                });
             }
-        });
+        }
 
         const languages = formData.templates.map(t => t.language).filter(l => l !== '');
         const hasDuplicateLang = new Set(languages).size !== languages.length;
@@ -223,7 +232,15 @@ export default function QuestionForm() {
                         onChange={(e) => handleChange('question', e.target.value)}
                         rows={5} />
                     
-                    <h3 className="font-bold text-lg mt-6 mb-2">Language Starter Templates</h3>
+                    <div className="flex items-center gap-4 mt-6 mb-2">
+                        <h3 className="font-bold text-lg">Language Starter Templates</h3>
+                        {/* Visual cue for the user */}
+                        {formData.templates.length === 0 && (
+                            <span className="text-red-500 text-sm font-medium">
+                                (Please add at least 1 template for a question)
+                            </span>
+                        )}
+                    </div>
                     <p className="text-sm text-gray-500 mb-4">Add boilerplate code for specific languages.</p>
                     
                     {formData.templates.map((template, index) => (
@@ -267,8 +284,10 @@ export default function QuestionForm() {
                         </div>
                     ))}
                     
-                    <Button label="+ Add Language Template" onClick={handleAddTemplate} />
-
+                    <Button disabled={formData.templates.length >= 3} label="+ Add Language Template" onClick={handleAddTemplate} />
+                    {formData.templates.length >= 3 && (
+                        <p className="text-xs text-orange-600 mt-1">Maximum of 3 languages reached.</p>
+                    )}
                     
                 </div>
 
