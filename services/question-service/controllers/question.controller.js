@@ -4,32 +4,30 @@ const QuestionController = {
 
   createQuestion: async (req, res) => {
     try {
-      // The verifyAdmin middleware should handle this, but keeping check
-      if (req.user.role !== 'Admin') {
-        return res.status(403).json({ message: "Permission Denied: Admin only" });
-      }
+      const { 
+        title, 
+        topic, 
+        difficulty, 
+        description, 
+        templates // This is the array containing {language, starter_code, solution_code}
+      } = req.body;
 
-      const { title, topic, difficulty, description, solution } = req.body;
-
-  
       const newQuestion = await QuestionModel.createQuestion(
         title, 
         topic, 
         difficulty, 
         description, 
-        solution
+        templates 
       );
       
       res.status(201).json(newQuestion);
     } catch (error) {
-      if (error.code === 'DUPLICATE_TITLE') {
-            // 409 Conflict is the standard status for duplicates
-            return res.status(409).json({ error: "Duplicate title" });
-        }
+      if (error.code === 'DUPLICATE_TITLE' || error.code === 'DUPLICATE_LANGUAGE') {
+        return res.status(409).json({ error: error.message });
+    }
       res.status(500).json({ error: error.message });
     }
   },
-
 
   getQuestions: async (req, res) => {
     try {
@@ -53,41 +51,42 @@ const QuestionController = {
     }
   },
 
-updateQuestion: async (req, res) => {
-  try {
-    const { id } = req.params;
-    
- 
-    const { 
-      title, 
-      topic, 
-      difficulty, 
-      description, 
-      solution 
-    } = req.body;
-    
+  updateQuestion: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { 
+        title, 
+        topic, 
+        difficulty, 
+        description, 
+        templates 
+      } = req.body;
 
-    const updatedQuestion = await QuestionModel.updateQuestion(
-      id, title, topic, difficulty, description, solution
-    );
-    
-    if (!updatedQuestion) return res.status(404).json({ message: "Question not found" });
-    res.status(200).json(updatedQuestion);
-  } catch (error) {
-    if (error.code === 'DUPLICATE_TITLE') {
-            // 409 Conflict is the standard status for duplicates
-            return res.status(409).json({ error: "Duplicate title" });
-        }
-    res.status(500).json({ error: error.message });
-  }
-},
-
+      const updatedQuestion = await QuestionModel.updateQuestion(
+        id, 
+        title, 
+        topic, 
+        difficulty, 
+        description, 
+        templates 
+      );
+      
+      if (!updatedQuestion) return res.status(404).json({ message: "Question not found" });
+      res.status(200).json(updatedQuestion);
+    } catch (error) {
+      if (error.code === 'DUPLICATE_TITLE' || error.code === 'DUPLICATE_LANGUAGE') {
+        return res.status(409).json({ error: error.message });
+    }
+      res.status(500).json({ error: error.message });
+    }
+  },
+  
   getRandomQuestion: async (req, res) => {
     try {
 
-      const { topic, difficulty } = req.query;
+      const { topic, difficulty, language } = req.query;
 
-      const question = await QuestionModel.findRandom(topic, difficulty);
+      const question = await QuestionModel.findRandom(topic, difficulty, language);
       
       if (!question) {
         return res.status(404).json({ message: "No questions found for this topic and difficulty" });
