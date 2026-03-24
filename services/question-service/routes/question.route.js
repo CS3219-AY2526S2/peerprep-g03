@@ -20,5 +20,5 @@ router.put('/:id', verifyAdmin, QuestionController.updateQuestion);
 
 // Soft-delete a question (remains in DB for history)
 router.delete('/:id', verifyAdmin, QuestionController.deleteQuestion);
-
+router.post('/topic-relations', QuestionController.getTopicRelations);
 module.exports = router;

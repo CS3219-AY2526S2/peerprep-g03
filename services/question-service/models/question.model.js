@@ -187,6 +187,29 @@ async function findRandom(topic, difficulty, language) {
   
   return res.rows[0];
 }
+async function getTopicCoOccurrence(topics) {
+    const query = `
+        WITH TopicPairs AS (
+            -- Get all tags from all active questions
+            SELECT id, UNNEST(topic_tags) as topic 
+            FROM questions 
+            WHERE is_deleted = FALSE
+        )
+        SELECT 
+            t1.topic AS main_topic, 
+            t2.topic AS related_topic, 
+            COUNT(*)::int as occurrence_count
+        FROM TopicPairs t1
+        JOIN TopicPairs t2 ON t1.id = t2.id AND t1.topic != t2.topic
+        -- The related_topic can be ANY other tag it is paired with in the DB.
+        WHERE t1.topic = ANY($1) 
+        GROUP BY t1.topic, t2.topic
+        ORDER BY t1.topic ASC, occurrence_count DESC;
+    `;
+
+    const res = await pool.query(query, [topics]);
+    return res.rows;
+}
 
 module.exports = {
   createQuestion,
@@ -194,5 +217,6 @@ module.exports = {
   getQuestionById,
   updateQuestion,
   deleteQuestion,
-  findRandom
+  findRandom,
+  getTopicCoOccurrence
 };

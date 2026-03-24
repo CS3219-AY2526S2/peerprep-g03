@@ -89,3 +89,13 @@ export async function getQuestions(username:string){
         data: { questions: response.data }
     };
 }
+
+export async function getTopicRelations(topics: string[]) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    
+    const response = await axios.post(`${API_URL}/topic-relations`, { 
+        topics 
+    });
+    
+    return response.data;
+}
