@@ -12,7 +12,7 @@ export function Button({
     variant = "contained",
     disabled = false,
     onClick = () => {},
-    } : AvatarProps) {
+    } : ButtonProps) {
         return (
             <MuiButton variant = {variant} disabled = {disabled} onClick = {onClick}>
                 {label}

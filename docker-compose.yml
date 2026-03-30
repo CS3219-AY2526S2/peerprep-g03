@@ -44,6 +44,13 @@ services:
     networks:
       - app-network
 
+  match-db:
+    image: redis:7-alpine
+    container_name: match-db
+    restart: always
+    networks:
+      - app-network
+
   # ---------- Backends ----------
   #################################
   # Creating a new backend service
@@ -96,6 +103,20 @@ services:
     networks:
       - app-network
 
+  match-service:
+    build: ./services/match-service
+    container_name: match-service
+    depends_on:
+      - match-db
+    environment:
+      REDIS_URL: redis://match-db:6379
+      PORT: 3050
+    ports:
+      - "3050:3050"
+    networks:
+      - app-network
+
+
   # ---------- Frontend ----------
   frontend:
     build: ./frontend
@@ -103,9 +124,11 @@ services:
     depends_on:
       - user-service
       - question-service
+      - match-service
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
+      VITE_MATCH_SERVICE_URL: http://match-service:3050
     ports:
       - "5173:5173"
     networks:
