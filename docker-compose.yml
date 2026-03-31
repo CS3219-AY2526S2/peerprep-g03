@@ -44,6 +44,19 @@ services:
     networks:
       - app-network
 
+  records-db:
+    image: postgres:15
+    container_name: records-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: recordsdb
+    volumes:
+      - records-db-data:/var/lib/postgresql/data
+      - ./services/records-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
   # ---------- Backends ----------
   #################################
   # Creating a new backend service
@@ -96,6 +109,19 @@ services:
     networks:
       - app-network
 
+  records-service:
+    build: ./services/records-service
+    container_name: records-service
+    depends_on:
+      - records-db
+    environment:
+      DATABASE_URL: postgres://postgres:secret@records-db:5432/recordsdb
+      PORT: 3004
+    ports:
+      - "3004:3004"
+    networks:
+      - app-network
+
   # ---------- Frontend ----------
   frontend:
     build: ./frontend
@@ -114,6 +140,7 @@ services:
 volumes:
   user-db-data:
   question-db-data:
+  records-db-data:
 
 networks:
     app-network:
