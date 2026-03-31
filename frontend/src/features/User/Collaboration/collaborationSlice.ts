@@ -24,10 +24,10 @@ export const fetchPartner = createAsyncThunk(
 
 export const fetchQuestion = createAsyncThunk(
     'collaboration/fetchQuestionByQuestionSetting',
-    async ({questionTopic, questionDifficulty, programmingLanguage}) => {
-        const data = await getQuestionUser(questionTopic, questionDifficulty, programmingLanguage);
-        return {...data, questionTopic, questionDifficulty, programmingLanguage};
-    }
+     async ({username, questionTopic, questionDifficulty, programmingLanguage}) => {
+            const data = await getPartner(username, questionTopic, questionDifficulty, programmingLanguage);
+            return {...data, username, questionTopic, questionDifficulty, programmingLanguage};
+     }
 );
 
 const handleStatus = (status) => (state) => {
@@ -49,6 +49,11 @@ const collaborationSlice = createSlice({
                 ...action.payload
             };
         },
+        setPartner: (state, action) => {
+            state.value.partner = action.payload;
+            state.stateStatus = 'succeeded';
+        },
+
         reset: (state) => {
             state.value = initialStateValue;
             state.stateStatus = 'idle'},
@@ -66,5 +71,5 @@ const collaborationSlice = createSlice({
     }
 });
 
-export const { initialise, reset, resetStatus } = collaborationSlice.actions;
+export const { initialise, reset, resetStatus, setPartner } = collaborationSlice.actions;
 export default collaborationSlice.reducer;
