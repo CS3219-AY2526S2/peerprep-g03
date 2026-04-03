@@ -1,5 +1,5 @@
 import axios from 'axios';
-const MATCH_API_URL = 'http://localhost:3050/api';
+const MATCH_API_URL = 'http://localhost:3003/api';
 
 export async function getPartner(username, questionTopic, questionDifficulty, programmingLanguage) {
     try {

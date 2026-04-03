@@ -60,7 +60,7 @@ export default function WaitingRoom() {
     useEffect(() => {
       const handleTabClose = () => {
 
-          navigator.sendBeacon(`http://localhost:3050/api/match/exit-tab/${username}`);
+          navigator.sendBeacon(`http://localhost:3003/api/match/exit-tab/${username}`);
         };
 
 

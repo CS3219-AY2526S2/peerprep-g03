@@ -123,9 +123,9 @@ services:
       - match-db
     environment:
       REDIS_URL: redis://match-db:6379
-      PORT: 3050
+      PORT: 3003
     ports:
-      - "3050:3050"
+      - "3003:3003"
     networks:
       - app-network
 
@@ -154,7 +154,7 @@ services:
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
-      VITE_MATCH_SERVICE_URL: http://match-service:3050
+      VITE_MATCH_SERVICE_URL: http://match-service:3003
     ports:
       - "5173:5173"
     networks:

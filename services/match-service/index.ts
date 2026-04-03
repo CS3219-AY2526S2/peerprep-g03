@@ -34,7 +34,7 @@ app.get('/api/ping', (req, res) => {
 app.use('/api', matchRoutes.router);
 
 initAllWorker(matchService);
-const PORT = process.env.PORT || 3050;
+const PORT = process.env.PORT || 3003;
 
 app.listen(PORT, () => {
   console.log(`Match Service running on port ${PORT}`);
