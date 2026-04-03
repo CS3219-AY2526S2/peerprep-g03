@@ -27,8 +27,3 @@ Open the link in your console
 cd ..
 docker compose up --build
 ```
-
-3. Websocket
-``` bash
-npx y-websocket-server --port 1234
-```

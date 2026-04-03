@@ -1,4 +1,11 @@
 services:
+  # redis:
+  #   image: redis:7
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
   # ---------- Databases ----------
   #################################
   # To create a new service database:
@@ -44,11 +51,24 @@ services:
     networks:
       - app-network
 
+  # collab-db:
+  #   image: postgres:15
+  #   container_name: collab-db
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: secret
+  #     POSTGRES_DB: collabdb
+  #   volumes:
+  #     - collab-db-data:/var/lib/postgresql/data
+  #     - ./services/collab-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   networks:
+  #     - app-network
+
   # ---------- Backends ----------
   #################################
   # Creating a new backend service
   #
-  # 1. Copy the `user-service` block.
+  # 1. Copy the user-service block.
   # 2. Rename:
   #    - service key (user-service)
   #    - container_name
@@ -95,6 +115,34 @@ services:
       - "3001:3001"
     networks:
       - app-network
+  
+  # collab-service:
+  #   build: ./services/collab-service
+  #   container_name: collab-service
+  #   depends_on:
+  #     - collab-db
+  #     - redis
+  #   environment:
+  #     DATABASE_URL: postgres://postgres:secret@collab-db:5432/collabdb
+  #     REDIS_URL: redis://redis:6379
+  #     PORT: 3002
+  #     JWT_SECRET: supersecretjwtkey
+  #   ports:
+  #     - "3002:3002"
+  #   networks:
+  #     - app-network
+
+  collab-service:
+    build: ./services/collab-service
+    container_name: collab-service
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1234
+      JWT_SECRET: supersecretjwtkey
+    ports:
+      - "1234:1234"
+    networks:
+      - app-network
 
   # ---------- Frontend ----------
   frontend:
@@ -103,9 +151,11 @@ services:
     depends_on:
       - user-service
       - question-service
+      - collab-service
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
+      VITE_COLLAB_SERVICE_URL: http://collab-service:1234
     ports:
       - "5173:5173"
     networks:
@@ -114,6 +164,7 @@ services:
 volumes:
   user-db-data:
   question-db-data:
+  #collab-db-data:
 
 networks:
     app-network:
