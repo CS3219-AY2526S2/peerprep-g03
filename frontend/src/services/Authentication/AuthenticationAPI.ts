@@ -71,6 +71,45 @@ export async function updateProficiency(username: string, proficiency: string){
       return {status: "200"};
 }
 
+export async function refreshJWToken() {
+    try { 
+        const token = localStorage.getItem("JWToken");
+
+        if (!token) {
+            return { status: "401", data: { message: "No token found" } };
+        }
+
+        const response = await fetch(`${BASE_URL}/refresh`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            return {
+                status: response.status.toString(),
+                data: { message: data.error }
+            };
+        }
+
+        //replace token
+        localStorage.setItem("JWToken", data.JWToken);
+
+        return {
+            status: response.status.toString(),
+            JWToken: data.JWToken
+        };
+    } catch (err) {
+        return {
+            status: "500",
+            data: { message: "Server unreachable" }
+        };
+    }
+}
+
 // Commented out mock
 // export async function getUserProfile(username: string, password: string){
 //       await new Promise((resolve) => setTimeout(resolve, 500));

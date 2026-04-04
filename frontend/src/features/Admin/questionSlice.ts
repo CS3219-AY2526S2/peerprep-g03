@@ -6,8 +6,15 @@ import {
     updateQuestion as updateQuestionApi, 
     deleteQuestion
 } from '../../services/Questions';
-const initialStateValue = { questionTitle: null, questionTopic: null, questionDifficulty: null, question: null, id: null, solution: null}
-
+const initialStateValue = { 
+    id: null, 
+    questionTitle: '', 
+    questionTopic: [], 
+    questionDifficulty: '', 
+    question: '', 
+    solution: '',
+    templates: [] // New field
+};
 export const fetchQuestionDetail = createAsyncThunk(
     'question/fetchById',
     async (questionId) => {
@@ -38,7 +45,7 @@ export const updateExistingQuestion = createAsyncThunk(
                 topic: questionData.questionTopic,
                 difficulty: questionData.questionDifficulty,
                 description: questionData.question,
-                solution: questionData.solution
+                templates: questionData.templates
             });
         } catch (err: any) {
             return rejectWithValue(err.response?.data || "Update failed");
@@ -54,7 +61,7 @@ export const createNewQuestion = createAsyncThunk(
                 questionData.questionTopic, // This becomes 'topic'
                 questionData.questionDifficulty,
                 questionData.question,      // This becomes 'description'
-                questionData.solution
+                questionData.templates
             );
             return response; // Successful creation 
         } catch (err: any) {

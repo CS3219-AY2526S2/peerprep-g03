@@ -17,6 +17,7 @@ const AttemptInformation= lazy(() => import('./../../pages/User/PastAttempt/Atte
 const QuestionSetting = lazy(() => import('./../../pages/User/QuestionSetting/QuestionSetting'))
 const UserProfile = lazy(() => import('./../../pages/User/UserProfile/UserProfile'))
 const WaitingRoom = lazy(() => import('./../../pages/User/WaitingRoom/WaitingRoom'))
+const AdminDashboard = lazy(() => import('./../../pages/AdminDashboard/AdminDashboard'))
 
 export function AppRoutes () {
     return (
@@ -32,6 +33,10 @@ export function AppRoutes () {
                     <Route path = "/question/edit/:questionId" element = {<QuestionForm/> } />
                     <Route path = "/question/new" element = {<QuestionForm/> } />
                     <Route path = "/question/view/:questionId" element = {<QuestionInformation/> } />
+                </Route>
+
+                <Route element={<ProtectedRoutes allowedRoles={['SuperAdmin']} />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
                 </Route>
 
                 <Route element={<ProtectedRoutes allowedRoles={['User']} />}>

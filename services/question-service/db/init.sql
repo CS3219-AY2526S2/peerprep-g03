@@ -1,24 +1,20 @@
+-- 1. Create the master Questions table (Updated)
 CREATE TABLE questions (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    difficulty VARCHAR(50) CHECK (difficulty IN ('Easy', 'Intermediate', 'Hard')) NOT NULL,
-    topic_tags TEXT[] NOT NULL, -- Array of tags
-    templates JSONB,
-    solution TEXT,
-    test_cases JSONB,
-    image_url TEXT,
+    difficulty VARCHAR(50) NOT NULL,
+    topic_tags TEXT[], 
     is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
-
-CREATE INDEX idx_difficulty ON questions(difficulty);
-CREATE INDEX idx_topic_tags ON questions USING GIN (topic_tags);
-CREATE INDEX idx_is_deleted ON questions(is_deleted);
-
-INSERT INTO questions (title, description, difficulty, topic_tags, solution) 
-VALUES 
-('Two Sum', 'Given an array of integers, return indices of the two numbers such that they add up to a specific target.', 'Easy', ARRAY['Data Structures', 'Algorithms'], 'Use a hash map to store seen values.'),
-('Longest Substring', 'Find the length of the longest substring without repeating characters.', 'Intermediate', ARRAY['Strings', 'Sliding Window'], 'Use two pointers to maintain a window.'),
-('Median of Two Sorted Arrays', 'Find the median of the two sorted arrays.', 'Hard', ARRAY['Arrays', 'Binary Search'], 'Binary search on the smaller array.');
+-- 2. Create the Language Templates table (New)
+CREATE TABLE question_templates (
+    id SERIAL PRIMARY KEY,
+    question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
+    language VARCHAR(50) NOT NULL, -- 'python', 'cpp', 'java'
+    starter_code TEXT,             -- The code the user sees first
+    solution_code TEXT,            -- The reference solution
+    UNIQUE(question_id, language)  -- Prevents duplicate Python entries for one question
+);

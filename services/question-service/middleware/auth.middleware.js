@@ -16,7 +16,7 @@ const verifyAdmin = (req, res, next) => {
     req.user = decoded;
 
 
-    if (req.user.role !== 'Admin') {
+    if (req.user.role !== 'Admin' && req.user.role !== 'SuperAdmin') {
       return res.status(403).json({ 
         message: "Permission Denied: Administrative access required." 
       });

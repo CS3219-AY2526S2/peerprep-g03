@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const QuestionController = require('../controllers/question.controller');
 const { verifyAdmin } = require('../middleware/auth.middleware');
-
+router.get('/topic-relations', QuestionController.getTopicRelations);
 
 router.get('/', QuestionController.getQuestions);
 

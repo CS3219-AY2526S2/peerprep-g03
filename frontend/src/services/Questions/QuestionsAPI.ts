@@ -39,7 +39,7 @@ export async function getQuestionUser(questionTopic: string, questionDifficulty:
     return response.data;
 }
 
-export async function createQuestion(questionTitle, questionTopic, questionDifficulty, question, solution) {
+export async function createQuestion(questionTitle, questionTopic, questionDifficulty, question, templates) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const token = localStorage.getItem('JWToken'); 
     const response = await axios.post(API_URL, {
@@ -47,7 +47,7 @@ export async function createQuestion(questionTitle, questionTopic, questionDiffi
         topic: questionTopic,
         difficulty: questionDifficulty,
         description: question,
-        solution: solution
+        templates: templates
     },
     { 
             headers: { 
@@ -60,7 +60,7 @@ export async function createQuestion(questionTitle, questionTopic, questionDiffi
 }
 
 // Use destructuring in the function signature
-export async function updateQuestion({ id, title, topic, difficulty, description, solution }) {
+export async function updateQuestion({ id, title, topic, difficulty, description, templates}) {
     const token = localStorage.getItem('JWToken'); 
 
     // Ensure topic is an array before sending to the Backend
@@ -73,7 +73,7 @@ export async function updateQuestion({ id, title, topic, difficulty, description
             topic: topicArray, // Send ["Strings"] instead of "Strings"
             difficulty, 
             description, 
-            solution 
+            templates
         }, 
         { 
             headers: { 'Authorization': `Bearer ${token}` } 
@@ -88,4 +88,11 @@ export async function getQuestions(username:string){
         status: "200 OK",
         data: { questions: response.data }
     };
+}
+
+export async function getGlobalTopicMap() {
+
+    const response = await axios.get(`${API_URL}/topic-relations`);
+    
+    return response.data;
 }

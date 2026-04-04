@@ -47,6 +47,9 @@ export default function UserProfile() {
                     }
                     <div class="mb-3"/>
                     <Button label = "Log out" onClick = {handleLogOutClick} />
+                    {role === "SuperAdmin" && (
+                        <Button label="Go to Admin Dashboard" onClick={() => navigate('/admin')} />
+                    )}
                 </div>
             </div>
         </div>

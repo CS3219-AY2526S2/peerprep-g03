@@ -61,4 +61,34 @@ async function getUserByUsername(username) {
   return res.rows[0];
 }
 
-module.exports = { createUser, getUserByUsername, decryptEmail };
+async function getUserById(id) {
+  const res = await pool.query(
+    "SELECT * FROM users WHERE id = $1",
+    [id]
+  );
+  return res.rows[0];
+}
+
+async function getAllUsers() {
+  const res = await pool.query(
+    "SELECT id, username, role FROM users ORDER BY id ASC"
+  );
+  return res.rows;
+}
+
+async function updateUserRole(id, role) {
+  const res = await pool.query(
+    "UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, role",
+    [role, id]
+  );
+  return res.rows[0];
+}
+
+module.exports = { 
+  createUser, 
+  getUserByUsername, 
+  decryptEmail, 
+  getUserById,
+  getAllUsers,
+  updateUserRole
+};

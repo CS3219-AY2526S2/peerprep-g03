@@ -10,8 +10,21 @@ export function ProtectedRoutes({ allowedRoles }) {
         return <Navigate to="/" replace />;
     }
 
-    if (allowedRoles && !allowedRoles.includes(role)) {
-        return <Navigate to="/unauthorised" replace />;
+    // Allowance of higher roles to access lower role pages.
+    const ROLE_HIERARCHY = {
+        User: 1,
+        Admin: 2,
+        SuperAdmin: 3
+    };
+
+    if (allowedRoles) {
+        const hasAccess = allowedRoles.some(
+            (allowedRole) => ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[allowedRole]
+        );
+
+        if (!hasAccess) {
+            return <Navigate to="/unauthorised" replace />;
+        }
     }
 
     return <Outlet />;

@@ -51,6 +51,13 @@ services:
     networks:
       - app-network
 
+  match-db:
+    image: redis:7-alpine
+    container_name: match-db
+    restart: always
+    networks:
+      - app-network
+
   # collab-db:
   #   image: postgres:15
   #   container_name: collab-db
@@ -116,6 +123,19 @@ services:
     networks:
       - app-network
   
+  match-service:
+    build: ./services/match-service
+    container_name: match-service
+    depends_on:
+      - match-db
+    environment:
+      REDIS_URL: redis://match-db:6379
+      PORT: 3003
+    ports:
+      - "3003:3003"
+    networks:
+      - app-network
+
   # collab-service:
   #   build: ./services/collab-service
   #   container_name: collab-service
@@ -144,6 +164,7 @@ services:
     networks:
       - app-network
 
+
   # ---------- Frontend ----------
   frontend:
     build: ./frontend
@@ -151,11 +172,14 @@ services:
     depends_on:
       - user-service
       - question-service
+      - match-service
       - collab-service
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
-      VITE_COLLAB_SERVICE_URL: http://collab-service:1234
+      VITE_MATCH_SERVICE_URL: http://match-service:3003
+      VITE_COLLAB_SERVICE_URL: http://collab-service:3004
+
     ports:
       - "5173:5173"
     networks:
