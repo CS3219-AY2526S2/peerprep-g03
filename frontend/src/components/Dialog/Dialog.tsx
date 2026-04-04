@@ -1,4 +1,6 @@
-import { Dialog as MuiDialog, DialogTitle, DialogContent, Typography } from '@mui/material';
+import { Dialog as MuiDialog, DialogTitle, DialogContent, Typography, DialogActions } from '@mui/material';
+import { useState } from 'react';
+import { Button } from '../';
 import { darkBlue } from './../../commons';
 
 export interface DialogProps {
@@ -7,9 +9,19 @@ export interface DialogProps {
     canExit?: boolean;
     isVisible : boolean; // determine whether to make the modal visible or not
     onClose?: (event: {}, reason: "backdropClick" | "escapeKeyDown") => void;
+    haveButton?: boolean;
+    buttonWords?: string;
+    buttonActions?: () => void;
 }
 
-export function Dialog({title, content, canExit = true, isVisible, onClose = (event, reason) => {}}: DialogProps) {
+export function Dialog({title,
+    content,
+    canExit = true,
+    isVisible,
+    onClose = (event, reason) => {},
+    haveButton = false,
+    buttonActions = () => {},
+    buttonWords = ""}: DialogProps) {
     const modifiedOnClose = (event, reason) => {
         if (!canExit && reason === 'backdropClick') {
             return;
@@ -18,6 +30,11 @@ export function Dialog({title, content, canExit = true, isVisible, onClose = (ev
             onClose(event,reason);
         }
     }
+
+    const modifiedButtonAction = () => {
+        buttonActions();
+    }
+
     return (
         <MuiDialog open = {isVisible} disableEscapeKeyDown = {!canExit} onClose = {modifiedOnClose}>
             <DialogTitle sx={{
@@ -29,5 +46,10 @@ export function Dialog({title, content, canExit = true, isVisible, onClose = (ev
             <DialogContent>
                 <Typography>{content}</Typography>
             </DialogContent>
+            {haveButton &&
+            <DialogActions>
+                <Button label = {buttonWords} onClick = {modifiedButtonAction}/>
+            </DialogActions>
+            }
         </MuiDialog>);
 }

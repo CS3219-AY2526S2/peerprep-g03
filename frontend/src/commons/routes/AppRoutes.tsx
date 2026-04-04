@@ -28,7 +28,7 @@ export function AppRoutes () {
                 <Route path = "/unauthorised" element = {<UnauthorisedPage/> } />
                 <Route path = "/profile" element = {<UserProfile/> } />
 
-                <Route element={<ProtectedRoutes allowedRoles={['Admin']} />}>
+                <Route element={<ProtectedRoutes allowedRoles={['Admin', 'SuperAdmin']} />}>
                     <Route path = "/question" element = {<QuestionDashboard/> } />
                     <Route path = "/question/edit/:questionId" element = {<QuestionForm/> } />
                     <Route path = "/question/new" element = {<QuestionForm/> } />

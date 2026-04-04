@@ -57,7 +57,7 @@ export default function AdminDashboard() {
         <div className="p-10">
             <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
             
-            <Button label="Back to Start" onClick={() => navigate('/start')} />
+            <Button label="Back to Question Dashboard" onClick={() => navigate('/question')} />
             <table className="table-auto border w-full">
                 <thead>
                     <tr>

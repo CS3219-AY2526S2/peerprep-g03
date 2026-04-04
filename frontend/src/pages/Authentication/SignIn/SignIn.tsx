@@ -53,7 +53,7 @@ export default function SignIn() {
                 JWToken: response.JWToken
             }))
 
-        const isAdmin = response.role == "Admin"
+        const isAdmin = response.role == "Admin" || response.role == "SuperAdmin"
         if (isAdmin) {
             navigate('/question');
         }
