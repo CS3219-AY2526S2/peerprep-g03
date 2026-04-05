@@ -1,5 +1,0 @@
-export * from "./style.ts"
-export * from "./routes/AppRoutes.tsx"
-export * from "./store/store.ts"
-export * from "./helpers/regex.ts"
-export * from "./helpers/validators.ts"
