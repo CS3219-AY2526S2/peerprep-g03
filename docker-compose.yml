@@ -115,7 +115,17 @@ services:
       - "3003:3003"
     networks:
       - app-network
-
+  ai-service:
+    build: ./services/ai-service
+    container_name: ai-service
+    environment:
+      - PORT=3006
+      - GEMINI_API_KEY=${GEMINI_AI_API_KEY}
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GEMINI_AI_API_KEY}
+    ports:
+      - "3006:3006"
+    networks:
+      - app-network
 
   # ---------- Frontend ----------
   frontend:
@@ -125,10 +135,12 @@ services:
       - user-service
       - question-service
       - match-service
+      - ai-service
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
       VITE_MATCH_SERVICE_URL: http://match-service:3003
+      VITE_AI_SERVICE_URL: http://ai-service:3006
     ports:
       - "5173:5173"
     networks:
