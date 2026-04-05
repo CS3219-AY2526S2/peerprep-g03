@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.58",
+    "@ai-sdk/react": "^3.0.148",
+    "@google/generative-ai": "^0.24.1",
+    "ai": "^6.0.146",
+    "dotenv": "^17.4.0",
+    "express-rate-limit": "^8.3.2"
+  }
+}
