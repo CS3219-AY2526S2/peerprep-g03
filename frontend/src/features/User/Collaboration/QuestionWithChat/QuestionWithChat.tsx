@@ -11,29 +11,54 @@ export function QuestionWithChat() {
     const [atQuestionPage, setAtQuestionPage] = useState<boolean>(true);
     const dispatch = useDispatch();
     
-    // Selectors for Question data
     const { value, stateStatus } = useSelector((state: any) => state.collaboration);
     const { selection, setSelection } = useTextSelection();
-    
-    // 1. Ref to track this specific component's container
     const questionRef = useRef<HTMLDivElement>(null);
 
-    // 2. Logic to verify selection actually happened inside this box
+    // --- DRAGGING LOGIC ---
+    // Start the modal at a default position (bottom right-ish)
+    const [pos, setPos] = useState({ x: window.innerWidth - 450, y: window.innerHeight - 600 });
+    const isDragging = useRef(false);
+    const dragOffset = useRef({ x: 0, y: 0 });
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        isDragging.current = true;
+        dragOffset.current = {
+            x: e.clientX - pos.x,
+            y: e.clientY - pos.y
+        };
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDragging.current) return;
+            setPos({
+                x: e.clientX - dragOffset.current.x,
+                y: e.clientY - dragOffset.current.y
+            });
+        };
+
+        const handleMouseUp = () => {
+            isDragging.current = false;
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, []); // Only run once to set up listeners
+
+    // --- AI LOGIC ---
     const isSelectionInQuestion = () => {
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0 || !questionRef.current) return false;
-        // Checks if the start of the selection is inside our ref
         return questionRef.current.contains(sel.anchorNode);
     };
 
     const { complete, completion, isLoading, error, stop, setCompletion } = useCompletion({
         api: 'http://localhost:3006/api/ai/explain',
-        onFinish: () => {
-            console.log("AI finished generating explanation.");
-        },
-        onError: (err) => {
-            console.error("AI SDK Error:", err);
-        }
     });
 
     const { questionTopic, questionDifficulty, programmingLanguage, question, questionTitle } = value;
@@ -46,11 +71,8 @@ export function QuestionWithChat() {
 
     const handleAiClick = async () => {
         if (!selection || isLoading) return;
-
         await complete(selection.text, {
-            body: {
-                context: atQuestionPage ? 'question text' : 'code snippet'
-            }
+            body: { context: atQuestionPage ? 'question text' : 'code snippet' }
         });
     };
 
@@ -61,11 +83,9 @@ export function QuestionWithChat() {
     };
 
     return (
-        // 3. Attach the ref to the parent div
         <div ref={questionRef} className="flex flex-col justify-center p-1 relative">
             
             {/* --- AI SELECTION BUBBLE --- */}
-            {/* 4. Added isSelectionInQuestion() check to prevent bubbles from the Code side appearing here */}
             {selection && isSelectionInQuestion() && !completion && !error && (
                 <button 
                     disabled={isLoading}
@@ -83,13 +103,26 @@ export function QuestionWithChat() {
                 </button>
             )}
 
-            {/* --- AI EXPLANATION MODAL --- */}
+            {/* --- DRAGGABLE AI EXPLANATION MODAL --- */}
             {(completion || error || isLoading) && (
-                <div className="fixed bottom-24 right-8 w-80 bg-white border border-gray-200 shadow-2xl rounded-xl z-[100] flex flex-col overflow-hidden">
-                    <div className="bg-blue-50 px-4 py-2 flex justify-between items-center border-b border-blue-100">
-                        <div className="flex items-center gap-2">
+                <div 
+                    style={{ 
+                        position: 'fixed', 
+                        left: `${pos.x}px`, 
+                        top: `${pos.y}px`, 
+                        width: '400px', // Wider window as requested
+                        zIndex: 150 
+                    }}
+                    className="bg-white border border-gray-200 shadow-2xl rounded-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                >
+                    {/* HEADER: Acts as the drag handle */}
+                    <div 
+                        onMouseDown={handleMouseDown}
+                        className="bg-blue-50 px-4 py-3 flex justify-between items-center border-b border-blue-100 cursor-move active:cursor-grabbing select-none"
+                    >
+                        <div className="flex items-center gap-2 pointer-events-none">
                             <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-green-500 animate-pulse' : 'bg-blue-400'}`}></div>
-                            <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">AI Assistant</span>
+                            <span className="text-xs font-bold text-blue-700 tracking-wider uppercase">AI Assistant </span>
                         </div>
                         <button 
                             className="text-gray-400 hover:text-gray-600 text-lg leading-none" 
@@ -99,7 +132,7 @@ export function QuestionWithChat() {
                         </button>
                     </div>
                     
-                    <div className="p-4 overflow-y-auto max-h-[300px]">
+                    <div className="p-5 overflow-y-auto max-h-[500px]">
                         {error && (
                             <div className="bg-red-50 p-3 rounded border border-red-100">
                                 <p className="text-xs text-red-600 font-medium">
@@ -109,14 +142,15 @@ export function QuestionWithChat() {
                         )}
 
                         {completion && (
-                            <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap italic">
+                            <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap italic bg-slate-50 p-3 rounded border border-slate-100">
                                 {completion}
                             </div>
                         )}
                         
                         {isLoading && !completion && (
-                            <div className="flex justify-center py-4">
-                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <div className="flex flex-col items-center py-8 gap-3">
+                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Consulting Gemini...</span>
                             </div>
                         )}
                     </div>
