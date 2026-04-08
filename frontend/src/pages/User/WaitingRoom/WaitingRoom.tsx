@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header, PageTitle, Button, Card, Dialog } from '../../../components';
+import { Header, PageTitle, Button, Card } from '../../../components';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchPartner, reset, resetStatus, setPartner } from '../../../features/User/Collaboration/collaborationSlice';
 import { deleteMatch, pollMatchStatus, getPartner }from '../../../services/Collaboration';
@@ -15,30 +15,7 @@ const statusMessage = {
 export default function WaitingRoom() {
     const [partnerStatus, setPartnerStatus] = useState<string>(statusMessage.FINDING_PARTNER());
     const [isMatched, setIsMatched] = useState(false);
-    const [isPageDuplicate, setIsPageDuplicate] = useState(false);
 
-      useEffect(() => {
-
-        const channel = new BroadcastChannel('page_checker_channel');
-        const currentUrl = window.location.href;
-
-
-        channel.postMessage({ type: 'PING_ROUTE', url: currentUrl });
-
-        channel.onmessage = (event) => {
-          const { type, url } = event.data;
-
-          if (type === 'PING_ROUTE' && url === currentUrl) {
-            channel.postMessage({ type: 'PONG_ROUTE', url: currentUrl });
-          }
-
-          if (type === 'PONG_ROUTE' && url === currentUrl) {
-            setIsPageDuplicate(true);
-          }
-        };
-
-        return () => channel.close();
-      }, []);
     const {
         value: collabValue,
         stateStatus: collabStatus
@@ -57,6 +34,7 @@ export default function WaitingRoom() {
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const dispatch = useDispatch();
+
     useEffect(() => {
       const handleTabClose = () => {
 
@@ -71,38 +49,6 @@ export default function WaitingRoom() {
         };
       }, []);
 
-/*
-    useEffect(() => {
-            const startPolling = async () => {
-                // Create the "off switch"
-                abortControllerRef.current = new AbortController();
-
-                try {
-                    // Pass the signal to your service
-                    const result = await pollMatchStatus(username, abortControllerRef.current.signal);
-
-                    if (result.status === "matched") {
-                        // Logic to handle success (e.g., dispatch an action or navigate)
-                        console.log("Matched!", result);
-                    }
-                } catch (err: any) {
-                    if (err.name === 'AbortError') {
-                        console.log("Polling aborted safely.");
-                    } else {
-                        console.error("Matchmaking error:", err);
-                    }
-                }
-            };
-
-            // Start polling immediately when the user enters the room
-            startPolling();
-
-            // CLEANUP: If user leaves page or closes tab, stop the network requests
-            return () => {
-                abortControllerRef.current?.abort();
-            };
-        }, []); // Empty array = run once on mount
-    */
     useEffect(() => {
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
@@ -174,23 +120,6 @@ export default function WaitingRoom() {
                 console.error("Failed to cancel match", err);
             }
         };
-/*
-    useEffect(() => {
-        if (questionTopic && questionDifficulty && programmingLanguage && collabStatus === 'idle' && !partner) {
-            dispatch(fetchPartner({ username, questionTopic, questionDifficulty, programmingLanguage }));
-        }
-    }, [dispatch, username, questionTopic, questionDifficulty, programmingLanguage, collabStatus, partner]);
-
-    if (collabStatus === 'loading' || collabStatus === 'idle'  ) {
-        partnerStatus = statusMessage.FINDING_PARTNER();
-    } else if (collabStatus === 'succeeded' && partner) {
-        partnerStatus = statusMessage.PARTNER_FOUND(partner);
-    } else if (collabStatus === 'failed' || (collabStatus === 'succeeded' && !partner)) {
-        partnerStatus = statusMessage.NO_PARTNER_FOUND();
-    } else {
-        partnerStatus = statusMessage.UNEXPECTED_ERROR();
-    }
-*/
 
     const navigate = useNavigate();
     const handleContinueClick = async () => {
@@ -203,11 +132,6 @@ export default function WaitingRoom() {
     return (
         <div>
             <Header/>
-            <Dialog
-                title = "Duplicate Matching Request Detected"
-                content = "To prevent duplicates, only one request can be processed per session. Please close this tab and continue in your original window"
-                canExit = {isPageDuplicate}
-                isVisible = {isPageDuplicate}/>
             <div className = "p-5 whitespace-pre-line">
                 <PageTitle text = "Waiting Room"/>
                 <div class="flex flex-col justify-center p-4 gap-y-3 items-center">
