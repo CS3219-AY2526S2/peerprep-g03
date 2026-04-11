@@ -1,0 +1,59 @@
+# --- Dependencies ---
+# Ignore node_modules in every sub-service folder
+**/node_modules
+**/bower_components/
+services/ai-service/node_modules/
+services/user-service/node_modules/
+# --- Environment & Secrets ---
+# Crucial: Never commit your GEMINI_AI_API_KEY or other secrets
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# --- Build & Output ---
+# If you use TypeScript or bundling (Vite/Webpack)
+**/dist/
+**/build/
+**/out/
+**/.next/
+**/.vercel/
+*.tsbuildinfo
+
+# --- Debug & Logs ---
+# Logs from Express or Docker
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# --- Docker ---
+# Ignore local docker data or overrides if not shared
+.docker-data/
+docker-compose.override.yml
+
+# --- Testing ---
+**/coverage/
+**/.nyc_output/
+
+# --- IDE & OS ---
+# System specific files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Tooling ---
+.eslintcache
+.stylelintcache
+.prettiercache
