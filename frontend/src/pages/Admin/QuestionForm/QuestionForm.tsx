@@ -100,7 +100,7 @@ export default function QuestionForm() {
             interval = setInterval(() => {
                 dispatch(fetchQuestionDetail(questionId)); 
                 // Calling this refreshes the 'locked_at' in your current Model
-            }, 1 * 60 * 1000); 
+            }, 5 * 60 * 1000); 
         }
 
         return () => clearInterval(interval);

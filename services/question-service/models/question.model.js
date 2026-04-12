@@ -102,7 +102,7 @@ async function getQuestionById(id, adminId = null) {
         console.log(`DATABASE CURRENT LOCK: ${question?.locked_by}`);
         console.log(`REQUESTING ADMIN: ${adminId}`);
         console.log("-----------------------------------------");
-        const lockDurationLimit = 2 * 60 * 1000; // 15 mins
+        const lockDurationLimit = 20 * 60 * 1000; // 20 mins
         
         // CHECK: Is it locked by someone else?
         const isLockedByOthers = 
