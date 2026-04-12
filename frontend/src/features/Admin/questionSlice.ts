@@ -4,7 +4,8 @@ import {
     getQuestions, 
     createQuestion as createQuestionApi, 
     updateQuestion as updateQuestionApi, 
-    deleteQuestion
+    deleteQuestion,
+    releaseQuestionLock
 } from '../../services/Questions';
 const initialStateValue = { 
     id: null, 
@@ -17,9 +18,25 @@ const initialStateValue = {
 };
 export const fetchQuestionDetail = createAsyncThunk(
     'question/fetchById',
-    async (questionId) => {
-        const data = await getQuestionDetail(questionId); // an async method that takes question Id, and return the question info
-        return data; // note to self: this will be the action.payload
+    async (questionId, { rejectWithValue }) => {
+        try {
+            const data = await getQuestionDetail(questionId);
+            return data; 
+        } catch (err: any) {
+            // This captures the 409 error message: "This question is currently being edited by..."
+            return rejectWithValue(err.response?.data?.message || "Failed to fetch question");
+        }
+    }
+);
+export const releaseExistingLock = createAsyncThunk(
+    'question/releaseLock',
+    async (questionId: string, { rejectWithValue }) => {
+        try {
+            await releaseQuestionLock(questionId);
+            return null; // We don't need to return data to the state
+        } catch (err: any) {
+            return rejectWithValue(err.response?.data || "Failed to release lock");
+        }
     }
 );
 export const fetchAllQuestions = createAsyncThunk(
@@ -135,15 +152,19 @@ const questionSlice = createSlice({
         state.serverError = action.payload?.error || action.payload || "Update failed";
     })
     .addCase(fetchQuestionDetail.pending, (state) => {
-          state.stateStatus = 'loading';
-      })
-      .addCase(fetchQuestionDetail.fulfilled, (state, action) => {
-          state.stateStatus = 'succeeded';
-          state.value = action.payload; // Data from the API
-      })
-      .addCase(fetchQuestionDetail.rejected, (state) => {
-           state.stateStatus = 'failed';
-      })
+    state.stateStatus = 'loading';
+    state.serverError = null; // Clear previous errors
+    })
+    .addCase(fetchQuestionDetail.fulfilled, (state, action) => {
+        state.stateStatus = 'succeeded';
+        state.value = action.payload; 
+        state.serverError = null;
+    })
+    .addCase(fetchQuestionDetail.rejected, (state, action: any) => {
+        state.stateStatus = 'failed';
+        // Capture the lock error or any other server error
+        state.serverError = action.payload; 
+    })
       .addCase(fetchAllQuestions.pending, (state) => {
           state.stateStatus = 'loading';
       })
@@ -168,6 +189,18 @@ const questionSlice = createSlice({
     })
     .addCase(deleteExistingQuestion.rejected, (state) => {
         state.stateStatus = 'failed';
+    })
+    .addCase(releaseExistingLock.pending, (state) => {
+        state.stateStatus = 'loading';
+    })
+    .addCase(releaseExistingLock.fulfilled, (state) => {
+        state.stateStatus = 'idle'; // Reset to idle after successful unlock
+        state.serverError = null;
+        state.value = initialStateValue; // Clear form data since we are leaving
+    })
+    .addCase(releaseExistingLock.rejected, (state, action: any) => {
+        state.stateStatus = 'failed';
+        state.serverError = action.payload;
     });
     }
 });

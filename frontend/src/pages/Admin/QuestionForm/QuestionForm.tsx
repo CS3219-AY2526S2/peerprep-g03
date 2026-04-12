@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Header, PageTitle, Button, DropDown, TextArea, TextField, ErrorMessage, convertEnumsToDropDownOption } from '../../../components';
 import { getBlankFieldError } from '../../../commons';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchQuestionDetail, reset, createNewQuestion, updateExistingQuestion } from '../../../features/Admin/questionSlice';
+import { fetchQuestionDetail, reset, createNewQuestion, updateExistingQuestion, releaseExistingLock} from '../../../features/Admin/questionSlice';
 import LoadingPages from '../../SupportPages/LoadingPages/LoadingPages.tsx';
 import { QuestionTopic, QuestionDifficulty } from '../../../models';
+// Added import
 
 // Define the template structure
 interface LanguageTemplate {
@@ -30,8 +31,9 @@ export default function QuestionForm() {
     });
 
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isLockedByOther, setIsLockedByOther] = useState(false); // Added lock state
     const isEditMode = Boolean(questionId);
-
+    
     const [hasTouched, setHasTouched] = useState({
         questionTitle: false,
         questionTopic: false,
@@ -55,6 +57,28 @@ export default function QuestionForm() {
         }
     }, [dispatch, isEditMode, questionId, isLoaded]);
 
+    // Added: Detection for Lock Error
+    useEffect(() => {
+        if (serverError && serverError.toLowerCase().includes("currently being edited by")) {
+            setIsLockedByOther(true);
+            setIsLoaded(true);
+        }
+    }, [serverError]);
+
+    // Added: Cleanup to release lock on unmount or tab close
+    useEffect(() => {
+        const handleUnload = () => {
+            if (isEditMode && !isLockedByOther) {
+                releaseExistingLock(questionId!);
+            }
+        };
+        window.addEventListener('beforeunload', handleUnload);
+        return () => {
+            handleUnload();
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [isEditMode, questionId, isLockedByOther]);
+
     useEffect(() => {
         if (isEditMode && value && stateStatus === 'succeeded' && !isLoaded) {
             setFormData({
@@ -62,13 +86,25 @@ export default function QuestionForm() {
                 questionTopic: Array.isArray(value.topic_tags) ? value.topic_tags : [],
                 questionDifficulty: value.difficulty || '',
                 question: value.description || '',
-               
+                
                 templates: Array.isArray(value.templates) ? value.templates : []
             });
             setIsLoaded(true);
         }
     }, [value, stateStatus, isLoaded, isEditMode]);
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
 
+        if (isEditMode && !isLockedByOther) {
+            // Ping the server every 5 minutes to keep the lock fresh
+            interval = setInterval(() => {
+                dispatch(fetchQuestionDetail(questionId)); 
+                // Calling this refreshes the 'locked_at' in your current Model
+            }, 1 * 60 * 1000); 
+        }
+
+        return () => clearInterval(interval);
+    }, [isEditMode, isLockedByOther, questionId, dispatch]);
     const handleAddTemplate = () => {
         setFormData(prev => ({
             ...prev,
@@ -118,6 +154,9 @@ export default function QuestionForm() {
 
     const allErrorMessage = useMemo(() => {
         let msg = "";
+        // Added: Return server lock error immediately
+        if (isLockedByOther) return serverError;
+
         if (serverError?.includes("Permission Denied") || serverError?.includes("access required")) {
             return "User doesn't have access to edit/create/delete question.";
         }
@@ -152,19 +191,43 @@ export default function QuestionForm() {
             msg += (msg ? " | " : "") + serverError;
         }
         return msg;
-    }, [formData, hasTouched, serverError]);
-
-    if (isEditMode && (stateStatus === 'loading' || !value || !isLoaded)) {
-        return <LoadingPages />;
-    }
-
-    const pageTitle = isEditMode ? "Edit Question" : "New Question";
-
-    const handleBackClick = () => {
+    }, [formData, hasTouched, serverError, isLockedByOther]);
+    const handleBackClick = async () => {
+        if (isEditMode && !isLockedByOther) {
+            await releaseExistingLock(questionId!); // Unlock on back click
+        }
         dispatch(reset());
         navigate('/question/');
     };
 
+    if (isLockedByOther) {
+        return (
+            <div>
+                <Header />
+                <div className="flex flex-col items-center justify-center h-[70vh] p-8 text-center">
+                    <div className="bg-amber-50 border-2 border-amber-200 p-10 rounded-2xl shadow-xl max-w-lg">
+                        <div className="text-amber-500 mb-4">
+                            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-amber-900 font-black text-2xl mb-2">Access Restricted</h2>
+                        <p className="text-amber-700 mb-6 leading-relaxed">
+                            {serverError || "This question is being edited by another admin."}
+                        </p>
+                        <Button label="Back to Questions" onClick={handleBackClick} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    if (isEditMode && (stateStatus === 'loading' || !value || !isLoaded)) {
+        return <LoadingPages />;
+    }
+    
+    const pageTitle = isEditMode ? "Edit Question" : "New Question";
+
+    
     const handleChange = (id, value) => {
         setFormData(prev => ({ ...prev, [id]: value }));
         setHasTouched(prev => ({ ...prev, [id]: true }));
@@ -184,6 +247,7 @@ export default function QuestionForm() {
         setHasTouched(prev => ({ ...prev, questionTopic: true }));
     };
 
+    
     return (
         <div>
             <Header />
@@ -300,7 +364,7 @@ export default function QuestionForm() {
                     <Button
                         label="Submit"
                         onClick={handleSubmitClick}
-                        disabled={allErrorMessage !== "" || isFormIncomplete || stateStatus === 'loading'}
+                        disabled={isLockedByOther || allErrorMessage !== "" || isFormIncomplete || stateStatus === 'loading'}
                     />
                 </div>
             </div>

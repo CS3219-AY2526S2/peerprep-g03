@@ -6,7 +6,9 @@ CREATE TABLE questions (
     difficulty VARCHAR(50) NOT NULL,
     topic_tags TEXT[], 
     is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    locked_by VARCHAR(255) DEFAULT NULL,
+    locked_at TIMESTAMP DEFAULT NULL
 );
 
 -- 2. Create the Language Templates table (New)
