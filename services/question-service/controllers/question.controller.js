@@ -43,10 +43,21 @@ const QuestionController = {
   getQuestionDetail: async (req, res) => {
     try {
       const { id } = req.params;
-      const question = await QuestionModel.getQuestionById(id);
+      const adminId = req.user ? req.user.username : null; 
+      
+      // 2. Pass adminId to the model to attempt to acquire/refresh the lock
+      const question = await QuestionModel.getQuestionById(id, adminId);
+      
       if (!question) return res.status(404).json({ message: "Question not found" });
+      
       res.status(200).json(question);
     } catch (error) {
+      if (error.code === 'QUESTION_LOCKED') {
+        return res.status(409).json({ 
+          message: error.message, 
+          lockedBy: error.lockedBy 
+        });
+      }
       res.status(500).json({ error: error.message });
     }
   },
@@ -54,21 +65,14 @@ const QuestionController = {
   updateQuestion: async (req, res) => {
     try {
       const { id } = req.params;
-      const { 
-        title, 
-        topic, 
-        difficulty, 
-        description, 
-        templates 
-      } = req.body;
-
+      const adminId = req.user ? req.user.username : null;
+      const { title, topic, difficulty, description, templates } = req.body;
+      if (!adminId) {
+            return res.status(401).json({ error: "Unauthorized: Admin identity not found" });
+        }
+      // 4. Pass adminId to updateQuestion so it can verify the lock holder
       const updatedQuestion = await QuestionModel.updateQuestion(
-        id, 
-        title, 
-        topic, 
-        difficulty, 
-        description, 
-        templates 
+        id, title, topic, difficulty, description, templates, adminId
       );
       
       if (!updatedQuestion) return res.status(404).json({ message: "Question not found" });
@@ -76,7 +80,10 @@ const QuestionController = {
     } catch (error) {
       if (error.code === 'DUPLICATE_TITLE' || error.code === 'DUPLICATE_LANGUAGE') {
         return res.status(409).json({ error: error.message });
-    }
+      }
+      if (error.message.includes("lock")) {
+        return res.status(403).json({ error: error.message });
+      }
       res.status(500).json({ error: error.message });
     }
   },
@@ -138,7 +145,18 @@ const QuestionController = {
         console.error("Error in Global Topic Map:", error);
         res.status(500).json({ error: error.message });
     }
-}
+  },
+  unlockQuestion: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.user ? req.user.username : null;
+      
+      await QuestionModel.releaseQuestionLock(id, adminId);
+      res.status(200).json({ message: "Lock released" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
 
 
 };

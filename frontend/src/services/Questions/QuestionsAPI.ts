@@ -3,7 +3,14 @@ import axios from 'axios';
 const API_URL = 'http://localhost:3001/api/questions';
 
 export async function getQuestionDetail(questionId: string){
-    const response = await axios.get(`${API_URL}/${questionId}`);
+    const token = localStorage.getItem('JWToken'); 
+    console.log("Token being sent for fetch:", token ? "YES" : "NO TOKEN");
+    const response = await axios.get(`${API_URL}/${questionId}`, {
+        headers: { 
+            // Send token so backend can identify the admin and set the lock
+            'Authorization': token ? `Bearer ${token}` : '' 
+        }
+    });
     return response.data;
 }
 
@@ -78,6 +85,15 @@ export async function updateQuestion({ id, title, topic, difficulty, description
             headers: { 'Authorization': `Bearer ${token}` } 
         }
     );
+    return response.data;
+}
+export async function releaseQuestionLock(questionId: string) {
+    const token = localStorage.getItem('JWToken');
+    if (!token) return;
+
+    const response = await axios.post(`${API_URL}/${questionId}/unlock`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
     return response.data;
 }
 export async function getQuestions(username:string){

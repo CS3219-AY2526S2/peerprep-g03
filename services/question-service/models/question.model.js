@@ -80,24 +80,68 @@ async function getAllQuestions() {
 }
 
 // Retrieve a single question by ID
-// Updated getQuestionById
-async function getQuestionById(id) {
-    const questionRes = await pool.query(
-        "SELECT * FROM questions WHERE id = $1 AND is_deleted = FALSE", [id]
-    );
-    const templatesRes = await pool.query(
-        "SELECT language, starter_code, solution_code FROM question_templates WHERE question_id = $1", [id]
-    );
+async function getQuestionById(id, adminId = null) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
 
-    if (questionRes.rows.length === 0) return null;
+        // FOR UPDATE locks the row at the DB level during this transaction
+        const questionRes = await client.query(
+            "SELECT * FROM questions WHERE id = $1 AND is_deleted = FALSE FOR UPDATE", [id]
+        );
 
-    return {
-        ...questionRes.rows[0],
-        templates: templatesRes.rows
-    };
+        if (questionRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+        const question = questionRes.rows[0];
+    
+        console.log("-----------------------------------------");
+        console.log(`TIME: ${new Date().toLocaleTimeString()}`);
+        console.log(`QUERY FOR ID: ${id}`);
+        console.log(`DATABASE CURRENT LOCK: ${question?.locked_by}`);
+        console.log(`REQUESTING ADMIN: ${adminId}`);
+        console.log("-----------------------------------------");
+        const lockDurationLimit = 20 * 60 * 1000; // 20 mins
+        
+        // CHECK: Is it locked by someone else?
+        const isLockedByOthers = 
+            question.locked_by && 
+            String(question.locked_by) !== String(adminId) && 
+            (new Date() - new Date(question.locked_at)) < lockDurationLimit;
+
+        if (isLockedByOthers) {
+            // CRITICAL: Must rollback before throwing so we don't hang the client
+            await client.query('ROLLBACK'); 
+            const error = new Error(`Question is currently being edited by ${question.locked_by}`);
+            error.code = 'QUESTION_LOCKED';
+            error.lockedBy = question.locked_by;
+            throw error;
+        }
+
+        // If it's free OR locked by ME, refresh the timestamp
+        if (adminId) {
+            await client.query(
+                "UPDATE questions SET locked_by = $1, locked_at = NOW() WHERE id = $2",
+                [adminId, id]
+            );
+        }
+
+        const templatesRes = await client.query(
+            "SELECT language, starter_code, solution_code FROM question_templates WHERE question_id = $1", [id]
+        );
+
+        await client.query('COMMIT');
+        return { ...question, templates: templatesRes.rows };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 }
 // Update an existing question
-async function updateQuestion(id, title, topic, difficulty, description, templates = []) {
+async function updateQuestion(id, title, topic, difficulty, description, templates = [], adminId) {
     const topicArray = Array.isArray(topic) ? topic : [topic];
     const isDuplicate = await checkDuplicateTitle(title, id);
     
@@ -110,16 +154,26 @@ async function updateQuestion(id, title, topic, difficulty, description, templat
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        const lockCheck = await client.query(
+            "SELECT locked_by FROM questions WHERE id = $1", [id]
+        );
+        
+        const currentLockHolder = lockCheck.rows[0]?.locked_by;
 
+        if (currentLockHolder !== null && String(currentLockHolder) !== String(adminId)) {
+            console.error(`Lock Conflict: DB has [${currentLockHolder}], but [${adminId}] tried to save.`);
+            throw new Error(`This question is currently being edited by ${currentLockHolder}.`);
+        }
         // Update main question metadata
         const res = await client.query(
             `UPDATE questions 
-             SET title = $1, topic_tags = $2, difficulty = $3, description = $4
+             SET title = $1, topic_tags = $2, difficulty = $3, description = $4,
+                 locked_by = NULL, locked_at = NULL  -- CLEAR THE LOCK HERE
              WHERE id = $5 AND is_deleted = FALSE
              RETURNING *`,
-            [title, topicArray, difficulty, description, id]
+            [title, Array.isArray(topic) ? topic : [topic], difficulty, description, id]
         );
-
+        console.log(`Question ${id} updated and lock released by ${adminId}`);
         if (res.rows.length === 0) throw new Error("Question not found");
 
         // Refresh templates: Delete existing ones and re-insert current set
@@ -215,7 +269,20 @@ async function getAllTopicRelations() {
     const res = await pool.query(query);
     return res.rows;
 }
+async function releaseQuestionLock(id, adminId) {
+    if (!adminId) {
+        console.error("Attempted to release lock without adminId");
+        return { success: false, message: "No adminId provided" };
+    }
+    
+    const res = await pool.query(
+        "UPDATE questions SET locked_by = NULL, locked_at = NULL WHERE id = $1 AND locked_by = $2",
+        [id, adminId]
+    );
 
+    console.log(`Lock Release Attempt for ID ${id}: ${res.rowCount} row(s) updated.`);
+    return { success: res.rowCount > 0 };
+}
 module.exports = {
   createQuestion,
   getAllQuestions,
@@ -223,5 +290,6 @@ module.exports = {
   updateQuestion,
   deleteQuestion,
   findRandom,
-  getAllTopicRelations
+  getAllTopicRelations,
+  releaseQuestionLock
 };

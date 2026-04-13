@@ -8,7 +8,7 @@ router.get('/', QuestionController.getQuestions);
 
 
 router.get('/random', QuestionController.getRandomQuestion);
-router.get('/:id', QuestionController.getQuestionDetail);
+router.get('/:id', verifyAdmin, QuestionController.getQuestionDetail);
 
 // --- ADMIN PROTECTED ROUTES  ---
 
@@ -17,7 +17,7 @@ router.post('/', verifyAdmin, QuestionController.createQuestion);
 
 // Update an existing question
 router.put('/:id', verifyAdmin, QuestionController.updateQuestion);
-
+router.post('/:id/unlock', verifyAdmin, QuestionController.unlockQuestion);
 // Soft-delete a question (remains in DB for history)
 router.delete('/:id', verifyAdmin, QuestionController.deleteQuestion);
 
