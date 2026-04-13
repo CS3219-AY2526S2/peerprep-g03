@@ -118,7 +118,6 @@ export function Code() {
         };
     }, []);
 
-    
     const handleTextareaMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLTextAreaElement;
         if (target.selectionStart === target.selectionEnd) {
