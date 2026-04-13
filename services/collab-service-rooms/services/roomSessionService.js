@@ -338,8 +338,6 @@ export class RoomSessionService {
     // end room session for both users
     // "you have submitted" notif for user a, "your partner has submitted" notif for user b (if still connected)
 
-
-
     if (!userId || !roomId) {
       throw new Error('userId and roomId are required');
     }
@@ -349,6 +347,7 @@ export class RoomSessionService {
     try {
       await client.query('BEGIN');
 
+      // Verify session exists and is active
       const sessionRes = await client.query(
         `SELECT room_id, match_id, question_id, status
          FROM sessions
@@ -374,6 +373,7 @@ export class RoomSessionService {
         };
       }
 
+      // Verify submitting user is part of session
       await client.query(
         `INSERT INTO session_users (room_id, user_id)
          VALUES ($1, $2)
@@ -389,6 +389,7 @@ export class RoomSessionService {
         [roomId, userId]
       );
 
+      // Insert submission record, update to lastest code if submission for room id exists
       await client.query(
         `INSERT INTO submissions (room_id, submitted_by_user_id, code)
          VALUES ($1, $2, $3)
@@ -407,6 +408,7 @@ export class RoomSessionService {
         [roomId]
       );
 
+      // Close session if both users have submitted
       const allUsersSubmitted =
         sessionUsersRes.rows.length > 0 &&
         sessionUsersRes.rows.every((user) => user.has_submitted);
@@ -423,6 +425,7 @@ export class RoomSessionService {
 
       await client.query('COMMIT');
 
+      // Update in-memory session
       const session = {
         roomId: sessionRow.room_id,
         matchId: sessionRow.match_id,
