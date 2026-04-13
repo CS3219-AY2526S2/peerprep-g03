@@ -89,7 +89,7 @@ export class RoomSessionController {
 
   submitSession = async (req, res) => {
     try {
-      const { userId, roomId, code } = req.body;
+      const { userId, partnerId, question, roomId, code } = req.body;
 
       if (!userId || !roomId) {
         return res.status(400).json({
@@ -99,6 +99,8 @@ export class RoomSessionController {
 
       const result = await this.roomSessionService.submitSession({
         userId,
+        partnerId,
+        question,
         roomId,
         code,
       });

@@ -76,13 +76,13 @@ export async function leaveRoomSession(userId: string, roomId: string) {
   return handleJsonResponse<LeaveRoomSessionResponse>(response);
 }
 
-export async function submitRoomSession(userId: string, roomId: string, code: string) {
+export async function submitRoomSession(userId: string, partnerId: string, question: string, roomId: string, code: string) {
   const response = await fetch(`${ROOM_SESSION_BASE_URL}/submit`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userId, roomId, code }),
+    body: JSON.stringify({ userId, partnerId, question,roomId, code }),
   });
 
   return handleJsonResponse<SubmitRoomSessionResponse>(response);

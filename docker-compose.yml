@@ -51,18 +51,18 @@ services:
     networks:
       - app-network
 
-  # collab-db:
-  #   image: postgres:15
-  #   container_name: collab-db
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: secret
-  #     POSTGRES_DB: collabdb
-  #   volumes:
-  #     - collab-db-data:/var/lib/postgresql/data
-  #     - ./services/collab-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   networks:
-  #     - app-network
+  collab-db:
+    image: postgres:15
+    container_name: collab-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: collabdb
+    volumes:
+      - collab-db-data:/var/lib/postgresql/data
+      - ./services/collab-service-rooms/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
 
   match-db:
     image: redis:7-alpine
@@ -142,7 +142,10 @@ services:
   collab-service-rooms:
     build: ./services/collab-service-rooms
     container_name: collab-service-rooms
+    depends_on:
+      - collab-db
     environment:
+      DATABASE_URL: postgres://postgres:secret@collab-db:5432/collabdb
       PORT: 3002
       JWT_SECRET: supersecretjwtkey
     ports:
@@ -153,6 +156,9 @@ services:
   collab-service-websocket:
     build: ./services/collab-service-websocket
     container_name: collab-service-websocket
+    depends_on:
+      - collab-db
+      - collab-service-rooms
     environment:
       HOST: 0.0.0.0
       PORT: 3004
@@ -201,7 +207,7 @@ services:
 volumes:
   user-db-data:
   question-db-data:
-  #collab-db-data:
+  collab-db-data:
 
 networks:
     app-network:

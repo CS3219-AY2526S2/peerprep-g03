@@ -99,9 +99,9 @@ export function Code() {
     const sharedDocument = getSharedDocument()
     
     try {
-    if (roomId && roomId !== 'private-room') {
-      await submitRoomSession(username, roomId, sharedDocument) // to backend via my code
-    }
+      if (roomId && roomId !== 'private-room') {
+        await submitRoomSession(username, partner, question, roomId, sharedDocument) // to backend via my code
+      }
       await postAttempt(timestamp, username, partner, question, sharedDocument) // via teammates's code
     } catch (err) {
       console.error('Failed to submit session', err)
@@ -114,6 +114,9 @@ export function Code() {
       // Delete room
       // Remove redux dispatch(reset());
       // Save attempt to collab database with status 'submitted'
+
+      // Auto exit partner's room too?
+      // where is the post attempt
 
     }
   }

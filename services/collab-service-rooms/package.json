@@ -2,9 +2,9 @@
   "name": "collab-service-rooms",
   "version": "1.0.0",
   "description": "",
-  "main": "./src/server.js",
+  "main": "./server.js",
   "scripts": {
-    "start": "node ./src/server.js",
+    "start": "node ./server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -16,7 +16,8 @@
     "express": "^4.21.2",
     "ws": "^8.19.0",
     "yjs": "^13.6.27",
-    "y-websocket": "2.1.0"
+    "y-websocket": "2.1.0",
+    "pg": "^8.20.0"
 
   }
 }

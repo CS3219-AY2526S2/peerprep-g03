@@ -25,5 +25,17 @@ Open the link in your console
 2. Backend
 ``` bash
 cd ..
+docker compose down
 docker compose up --build
 ```
+
+Interactive psql
+``` bash
+docker compose exec collab-db psql -U postgres -d collabdb
+\dt
+\d sessions
+\d session_users
+SELECT * FROM sessions;
+SELECT * FROM session_users;
+SELECT * FROM submissions;
+``` 
