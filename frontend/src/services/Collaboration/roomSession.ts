@@ -3,7 +3,6 @@
 // leaveRoomSession(userId, roomId)
 // submitRoomSession(userId, roomId, code)
 
-import axios from 'axios';
 const ROOM_SESSION_BASE_URL = 'http://localhost:3002/api/room-session'; // match service is on port 3003, websocket is on 3002
 
 type StartRoomSessionResponse = {
@@ -76,13 +75,13 @@ export async function leaveRoomSession(userId: string, roomId: string) {
   return handleJsonResponse<LeaveRoomSessionResponse>(response);
 }
 
-export async function submitRoomSession(userId: string, partnerId: string, question: string, roomId: string, code: string) {
+export async function submitRoomSession(userId: string, roomId: string, code: string) {
   const response = await fetch(`${ROOM_SESSION_BASE_URL}/submit`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userId, partnerId, question,roomId, code }),
+    body: JSON.stringify({ userId, roomId, code }),
   });
 
   return handleJsonResponse<SubmitRoomSessionResponse>(response);

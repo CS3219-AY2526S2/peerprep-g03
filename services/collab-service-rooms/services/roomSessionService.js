@@ -332,61 +332,188 @@ export class RoomSessionService {
     };
   }
 
-  async submitSession({ userId, partnerId, question, roomId, code }) {
+  async submitSession({ userId, roomId, code }) {
     // verify room's session is active, user is part of session, etc.
     // verify code is valid (not empty) else store as "Missing Code"
     // end room session for both users
     // "you have submitted" notif for user a, "your partner has submitted" notif for user b (if still connected)
 
 
+
     if (!userId || !roomId) {
       throw new Error('userId and roomId are required');
     }
 
-    const session = this.sessions.get(roomId);
+    const client = await pool.connect();
 
-    if (!session) {
-      return {
-        success: false,
-        message: 'Session not found',
+    try {
+      await client.query('BEGIN');
+
+      const sessionRes = await client.query(
+        `SELECT room_id, match_id, question_id, status
+         FROM sessions
+         WHERE room_id = $1
+         LIMIT 1`,
+        [roomId]
+      );
+
+      const sessionRow = sessionRes.rows[0];
+      if (!sessionRow) {
+        await client.query('ROLLBACK');
+        return {
+          success: false,
+          message: 'Session not found',
+        };
+      }
+
+      if (sessionRow.status === 'closed') {
+        await client.query('ROLLBACK');
+        return {
+          success: false,
+          message: 'Session is already closed',
+        };
+      }
+
+      await client.query(
+        `INSERT INTO session_users (room_id, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (room_id, user_id) DO NOTHING`,
+        [roomId, userId]
+      );
+
+      await client.query(
+        `UPDATE session_users
+         SET has_submitted = TRUE,
+             last_active_at = CURRENT_TIMESTAMP
+         WHERE room_id = $1 AND user_id = $2`,
+        [roomId, userId]
+      );
+
+      await client.query(
+        `INSERT INTO submissions (room_id, submitted_by_user_id, code)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (room_id)
+         DO UPDATE SET
+           submitted_by_user_id = EXCLUDED.submitted_by_user_id,
+           code = EXCLUDED.code,
+           submitted_at = CURRENT_TIMESTAMP`,
+        [roomId, userId, code ?? 'Missing Code']
+      );
+
+      const sessionUsersRes = await client.query(
+        `SELECT user_id, has_submitted, has_left, last_active_at
+         FROM session_users
+         WHERE room_id = $1`,
+        [roomId]
+      );
+
+      const allUsersSubmitted =
+        sessionUsersRes.rows.length > 0 &&
+        sessionUsersRes.rows.every((user) => user.has_submitted);
+
+      const nextStatus = allUsersSubmitted ? 'closed' : sessionRow.status;
+
+      await client.query(
+        `UPDATE sessions
+         SET status = $2,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE room_id = $1`,
+        [roomId, nextStatus]
+      );
+
+      await client.query('COMMIT');
+
+      const session = {
+        roomId: sessionRow.room_id,
+        matchId: sessionRow.match_id,
+        questionId: sessionRow.question_id,
+        users: sessionUsersRes.rows.map((user) => ({
+          userId: user.user_id,
+          hasSubmitted: user.has_submitted,
+          hasLeft: user.has_left,
+          lastActiveAt: user.last_active_at,
+        })),
+        status: nextStatus,
+        submittedUsers: sessionUsersRes.rows
+          .filter((user) => user.has_submitted)
+          .map((user) => user.user_id),
+        leftUsers: sessionUsersRes.rows
+          .filter((user) => user.has_left)
+          .map((user) => user.user_id),
+        lastSubmittedCode: code ?? 'Missing Code',
+        updatedAt: new Date().toISOString(),
       };
-    }
 
-    if (session.status === 'closed') {
+      this.matchToRoom.set(session.matchId, roomId);
+      this.sessions.set(roomId, session);
+
       return {
-        success: false,
-        message: 'Session is already closed',
+        success: true,
+        message: 'Session submitted successfully',
+        status: session.status,
+        session,
       };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-
-    if (!session.submittedUsers.includes(userId)) {
-      session.submittedUsers.push(userId);
-    }
-
-    session.lastSubmittedCode = code ?? 'Missing Code';
-    session.updatedAt = new Date().toISOString();
-
-    // Example rule:
-    // close when all users in session have submitted
-    const allUsersSubmitted =
-      session.users.length > 0 &&
-      session.users.every((user) => session.submittedUsers.includes(user.userId));
-
-    if (allUsersSubmitted) {
-      session.status = 'closed';
-    }
-
-    this.sessions.set(roomId, session);
-
-    return {
-      success: true,
-      message: 'Session submitted successfully',
-      status: session.status,
-      session,
-    };
   }
 
   async getSessionByRoomId(roomId) {
-    return this.sessions.get(roomId) || null;
+    const session = this.sessions.get(roomId);
+
+    if (session) {
+      return session;
+    }
+
+    const sessionRes = await pool.query(
+      `SELECT room_id, match_id, question_id, status
+       FROM sessions
+       WHERE room_id = $1
+       LIMIT 1`,
+      [roomId]
+    );
+
+    const sessionRow = sessionRes.rows[0];
+    if (!sessionRow) {
+      return {
+        success: false,
+        message: 'Session not found',
+      } || null;
+    }
+
+    const sessionUsersRes = await pool.query(
+      `SELECT user_id, has_submitted, has_left, last_active_at
+       FROM session_users
+       WHERE room_id = $1`,
+      [roomId]
+    );
+
+    const hydratedSession = {
+      roomId: sessionRow.room_id,
+      matchId: sessionRow.match_id,
+      questionId: sessionRow.question_id,
+      users: sessionUsersRes.rows.map((user) => ({
+        userId: user.user_id,
+        hasSubmitted: user.has_submitted,
+        hasLeft: user.has_left,
+        lastActiveAt: user.last_active_at,
+      })),
+      status: sessionRow.status,
+      submittedUsers: sessionUsersRes.rows
+        .filter((user) => user.has_submitted)
+        .map((user) => user.user_id),
+      leftUsers: sessionUsersRes.rows
+        .filter((user) => user.has_left)
+        .map((user) => user.user_id),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.matchToRoom.set(hydratedSession.matchId, roomId);
+    this.sessions.set(roomId, hydratedSession);
+
+    return hydratedSession;
   }
 }

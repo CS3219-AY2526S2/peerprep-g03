@@ -100,7 +100,7 @@ export function Code() {
     
     try {
       if (roomId && roomId !== 'private-room') {
-        await submitRoomSession(username, partner, question, roomId, sharedDocument) // to backend via my code
+        await submitRoomSession(username, roomId, sharedDocument)
       }
       await postAttempt(timestamp, username, partner, question, sharedDocument) // via teammates's code
     } catch (err) {
