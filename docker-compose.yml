@@ -1,4 +1,11 @@
 services:
+  # redis:
+  #   image: redis:7
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
   # ---------- Databases ----------
   #################################
   # To create a new service database:
@@ -44,6 +51,19 @@ services:
     networks:
       - app-network
 
+  collab-db:
+    image: postgres:15
+    container_name: collab-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: collabdb
+    volumes:
+      - collab-db-data:/var/lib/postgresql/data
+      - ./services/collab-service-rooms/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
   match-db:
     image: redis:7-alpine
     container_name: match-db
@@ -55,7 +75,7 @@ services:
   #################################
   # Creating a new backend service
   #
-  # 1. Copy the `user-service` block.
+  # 1. Copy the user-service block.
   # 2. Rename:
   #    - service key (user-service)
   #    - container_name
@@ -103,6 +123,51 @@ services:
     networks:
       - app-network
 
+  # collab-service:
+  #   build: ./services/collab-service
+  #   container_name: collab-service
+  #   depends_on:
+  #     - collab-db
+  #     - redis
+  #   environment:
+  #     DATABASE_URL: postgres://postgres:secret@collab-db:5432/collabdb
+  #     REDIS_URL: redis://redis:6379
+  #     PORT: 3002
+  #     JWT_SECRET: supersecretjwtkey
+  #   ports:
+  #     - "3002:3002"
+  #   networks:
+  #     - app-network
+
+  collab-service-rooms:
+    build: ./services/collab-service-rooms
+    container_name: collab-service-rooms
+    depends_on:
+      - collab-db
+    environment:
+      DATABASE_URL: postgres://postgres:secret@collab-db:5432/collabdb
+      PORT: 3002
+      JWT_SECRET: supersecretjwtkey
+    ports:
+      - "3002:3002"
+    networks:
+      - app-network
+
+  collab-service-websocket:
+    build: ./services/collab-service-websocket
+    container_name: collab-service-websocket
+    depends_on:
+      - collab-db
+      - collab-service-rooms
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3004
+      JWT_SECRET: supersecretjwtkey
+    ports:
+      - "3004:3004"
+    networks:
+      - app-network
+  
   match-service:
     build: ./services/match-service
     container_name: match-service
@@ -134,12 +199,16 @@ services:
     depends_on:
       - user-service
       - question-service
+      - collab-service-rooms
       - match-service
+      - collab-service-websocket
       - ai-service
     environment:
       VITE_USER_SERVICE_URL: http://user-service:3000
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
+      VITE_COLLAB_SERVICE_ROOMS_URL: http://collab-service-rooms:3002
       VITE_MATCH_SERVICE_URL: http://match-service:3003
+      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3004
       VITE_AI_SERVICE_URL: http://ai-service:3006
     ports:
       - "5173:5173"
@@ -149,6 +218,7 @@ services:
 volumes:
   user-db-data:
   question-db-data:
+  collab-db-data:
 
 networks:
     app-network:

@@ -8,6 +8,35 @@ import { reset } from '../../../../features/User/Collaboration/collaborationSlic
 import { postAttempt } from '../../../../services/Attempts';
 import { useCompletion } from '@ai-sdk/react';
 
+import Editor, { OnMount } from '@monaco-editor/react'
+import * as Y from 'yjs'
+import { MonacoBinding } from 'y-monaco'
+import { WebsocketProvider } from 'y-websocket'
+import type { editor as MonacoEditorNS } from 'monaco-editor'
+
+import { leaveRoomSession, submitRoomSession } from '../../../../services/Collaboration'
+
+
+type RootState = {
+  collaboration: {
+    value: {
+      partner?: string
+      question?: string
+      roomId?: string
+    }
+    stateStatus: string
+  }
+  authentication: {
+    value: {
+      username?: string
+    }
+    stateStatus: string
+  }
+}
+
+// Redux state
+
+
 export function Code() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -23,6 +52,27 @@ export function Code() {
         value: authValue,
         stateStatus: authStatus 
     } = useSelector((state: any) => state.authentication);
+
+    // Room session state
+    const partner = collabValue.partner ?? ''
+    const roomId = collabValue.roomId ?? 'private-room'
+    const question = collabValue.question ?? ''
+    const username = authValue.username ?? ''
+    console.log('Current roomId:', roomId) // Debug log for roomId
+    console.log('Current collab value:', collabValue) // Debug log for collaboration state
+
+    const havePartner = !!partner
+    const message = havePartner
+    ? `Participants: ${partner} and you`
+    : 'Private Room'
+
+    // Collab state
+    const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null)
+    const bindingRef = useRef<MonacoBinding | null>(null)
+    const providerRef = useRef<WebsocketProvider | null>(null)
+    const ydocRef = useRef<Y.Doc | null>(null)
+    const yTextRef = useRef<Y.Text | null>(null)
+    const hasInitializedRef = useRef(false)
 
     // --- AI TUTOR STATE ---
     const [bubble, setBubble] = useState<{ text: string, x: number, y: number } | null>(null);
@@ -68,10 +118,6 @@ export function Code() {
         };
     }, []);
 
-    const partner: string = collabValue.partner;
-    const havePartner: boolean = !!partner;
-    const message: string = havePartner ? "Participants: " + partner + " and you" : "Private Room";
-
     const handleTextareaMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLTextAreaElement;
         if (target.selectionStart === target.selectionEnd) {
@@ -102,21 +148,159 @@ export function Code() {
         if (isLoading) stop();
     };
 
-    const handleQuitClick = () => {
-        dispatch(reset());
-        navigate('/start');
-    };
 
-    const handleSubmitClick = () => {
-        const question: string = collabValue.question;
-        const partnerName: string = collabValue.partner;
-        const timestamp = new Date().toISOString();
-        const username: string = authValue.username;
+    // Collab helpers
+    const getSharedDocument = () => {
+      return editorRef.current?.getValue() ?? '';
+    }
 
-        postAttempt(timestamp, username, partnerName, question, "Sample code");
-        dispatch(reset());
-        navigate('/start');
-    };
+    const cleanupCollabResources = () => {
+      bindingRef.current?.destroy()
+      bindingRef.current = null
+
+      providerRef.current?.destroy()
+      providerRef.current = null
+
+      ydocRef.current?.destroy()
+      ydocRef.current = null
+
+      yTextRef.current = null
+      hasInitializedRef.current = false
+    }
+  
+
+    const handleQuitClick = async () => {
+      try {
+        if (roomId && roomId !== 'private-room') {
+          await leaveRoomSession(username, roomId)
+        }
+      } catch (err) {
+        console.error('Failed to leave room session', err)
+      } finally {
+        cleanupCollabResources()
+        dispatch(reset())
+        navigate('/start')
+      }
+    }
+
+    const handleSubmitClick = async () => {
+      const timestamp = new Date().toISOString()
+      const sharedDocument = getSharedDocument()
+      
+      // is this needed?
+      const question: string = collabValue.question;
+      const partnerName: string = collabValue.partner;
+      const username: string = authValue.username;
+
+      try {
+        if (roomId && roomId !== 'private-room') {
+          await submitRoomSession(username, roomId, sharedDocument)
+        }
+        await postAttempt(timestamp, username, partner, question, sharedDocument) // via teammates's code
+      } catch (err) {
+        console.error('Failed to submit session', err)
+      } finally {
+        cleanupCollabResources()
+        dispatch(reset())
+        navigate('/start')
+
+        // Destroy Yjs connections and bindings immediately to prevent further edits after submission
+        // Delete room
+        // Remove redux dispatch(reset());
+        // Save attempt to collab database with status 'submitted'
+
+        // Auto exit partner's room too?
+        // where is the post attempt
+
+      }
+    }
+
+    const handleEditorDidMount: OnMount = (editor, monaco) => {
+      editorRef.current = editor
+
+      const currentModel = editor.getModel()
+      if (!currentModel) {
+        console.error('Monaco model is missing')
+        return
+      }
+
+      // Yjs setup
+      // Create Yjs objects once for this mounted page
+      if (!hasInitializedRef.current) {
+        const ydoc = new Y.Doc()
+        const provider = new WebsocketProvider('ws://localhost:3004', roomId, ydoc)
+        const yText = ydoc.getText('monaco')
+
+        provider.on('status', (event: { status: string }) => {
+          console.log(`WebSocket status: ${event.status}, room: ${roomId}`)
+        })
+
+        provider.on('connection-error', (err: unknown) => {
+          console.error('WebSocket connection error:', err)
+        })
+
+        ydocRef.current = ydoc
+        providerRef.current = provider
+        yTextRef.current = yText
+        hasInitializedRef.current = true
+      }
+
+      // MonacoBinding
+      // Destroy any previous binding before rebinding
+      bindingRef.current?.destroy()
+
+      bindingRef.current = new MonacoBinding(
+        yTextRef.current!,
+        currentModel,
+        new Set([editor]),
+        providerRef.current!.awareness
+      )
+
+      // ===== (AI selection) =====
+      editor.onMouseUp(() => {
+        const selection = editor.getSelection()
+
+        if (!selection || selection.isEmpty()) {
+          setBubble(null)
+          return
+        }
+
+        const model = editor.getModel()
+        if (!model) return
+
+        const selectedText = model.getValueInRange(selection).trim()
+
+        if (selectedText.length > 2) {
+          const position = editor.getScrolledVisiblePosition(
+            selection.getEndPosition()
+          )
+
+          if (position) {
+            setBubble({
+              text: selectedText,
+              x: position.left,
+              y: position.top
+            })
+          }
+        }
+      })
+    }
+
+    useEffect(() => {
+      return () => {
+        bindingRef.current?.destroy()
+        bindingRef.current = null
+
+        providerRef.current?.destroy()
+        providerRef.current = null
+
+        ydocRef.current?.destroy()
+        ydocRef.current = null
+
+        yTextRef.current = null
+        hasInitializedRef.current = false
+      }
+    }, [])
 
     return (
         <div ref={containerRef} className="flex flex-col justify-center p-2 py-4 relative">
@@ -178,19 +362,19 @@ export function Code() {
                 </div>
             )}
 
-            <MuiTextField 
-                multiline 
-                rows={15} 
-                onMouseUp={handleTextareaMouseUp}
-                fullWidth
-                placeholder="// Highlight code here to ask the tutor..."
-                sx={{
-                    '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#fafafa',
-                        fontFamily: 'monospace'
-                    }
+            <div className="rounded-lg overflow-hidden border border-black">
+              <Editor
+                height="350px"
+                defaultLanguage="javascript"
+                theme="vs"
+                onMount={handleEditorDidMount}
+                options={{
+                  automaticLayout: true,
+                  lineNumbersMinChars: 2,
+                  lineDecorationsWidth: 0,
                 }}
-            />
+              />
+            </div>
 
             <div className="flex justify-end py-5 gap-x-10">
                 <Button label="Quit" onClick={handleQuitClick}/>
@@ -199,3 +383,4 @@ export function Code() {
         </div>
     );
 }
+

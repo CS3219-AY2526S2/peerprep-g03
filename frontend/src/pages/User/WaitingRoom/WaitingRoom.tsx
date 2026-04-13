@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header, PageTitle, Button, Card } from '../../../components';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchPartner, reset, resetStatus, setPartner } from '../../../features/User/Collaboration/collaborationSlice';
+
+import { initialise, fetchPartner, reset, resetStatus, setMatchId, setPartner, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
 import { deleteMatch, pollMatchStatus, getPartner }from '../../../services/Collaboration';
+import { startRoomSession } from '../../../services/Collaboration';
+
 
 const statusMessage = {
     UNEXPECTED_ERROR : () => 'Unexpected Error. Click "Back".',
@@ -30,6 +33,7 @@ export default function WaitingRoom() {
     const questionDifficulty: string = collabValue.questionDifficulty
     const programmingLanguage: string = collabValue.programmingLanguage
     const partner: string = collabValue.partner
+    const matchId: string = collabValue.matchId ?? ''
     const username: string = authValue.username
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -77,8 +81,14 @@ export default function WaitingRoom() {
                 const result = await pollMatchStatus(username, abortController.signal);
 
                 if (result.status === "matched") {
-                    console.log("Partner found", result)
-                    dispatch(setPartner(result.partnerId));
+                    // dispatch(setPartner(result.partnerId));
+                    // dispatch(setMatchId(result.matchId));
+                    dispatch(initialise({
+                        partner: result.partnerId,
+                        matchId: result.matchId,
+                    }));
+
+                    console.log("Partner found", result);
                     setPartnerStatus(statusMessage.PARTNER_FOUND(result.partnerId));
                     setIsMatched(true);
 
@@ -124,9 +134,29 @@ export default function WaitingRoom() {
     const navigate = useNavigate();
     const handleContinueClick = async () => {
         // Add dispatch to inialise partner here for state.collabboration
-        await deleteMatch(username);
-        navigate(`/collaboration`);
+        try {
+            const matchId = collabValue.matchId;
+
+            if (!matchId) {
+                console.error('No matchId found in Redux');
+                return;
+            }
+
+            // TODO: Create room and set partner in state.collaboration or via a separate room
+            const session = await startRoomSession(username, matchId);
+
+            dispatch(setRoomId(session.roomId));
+
+
+            await deleteMatch(username);
+            navigate(`/collaboration`);
+
+        } catch (err) {
+            console.error('Failed to start room session', err);
+        }
     };
+
+
 
 
     return (

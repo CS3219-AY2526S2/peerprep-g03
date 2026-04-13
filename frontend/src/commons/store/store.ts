@@ -12,4 +12,5 @@ export const store = configureStore({
       collaboration: collaborationReducer,
       ai: aiReducer
   },
+  devTools: true,
 });
