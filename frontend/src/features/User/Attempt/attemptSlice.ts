@@ -1,13 +1,27 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getAttemptDetail } from '../../../services/Attempts'
+//import { getAttemptDetail } from '../../../services/Attempts'
 
-const initialStateValue = { username: "", timestamp: "", questionTitle: "", submittedSolution: "", suggestedSolution: ""}
+//const initialStateValue = { username: "", timestamp: "", questionTitle: "", submittedSolution: "", suggestedSolution: ""}
+
+const initialStateValue = {
+  id: 0,
+  user1_id: 0,
+  user2_id: 0,
+  question_text: "",
+  submitted_code: "",
+  is_correct: false,
+  programming_language: "",
+  question_topic: "",
+  difficulty: "",
+  created_at: ""
+};
 
 export const fetchAttempt = createAsyncThunk(
-    'attempt/fetchByUsernameAndTimeStamp',
-    async ({username, timestamp}) => {
-        const data = await getAttemptDetail(username, timestamp);
-        return {...data, username, timestamp};
+    'attempt/fetchById',
+    async (id: number) => {
+        const res = await fetch(`http://localhost:3004/records/${id}`);
+        const data = await res.json();
+        return data;
     }
 );
 

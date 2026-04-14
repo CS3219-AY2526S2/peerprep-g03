@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Table, TableProp } from '../../../../components'
 import { AllAttemptRecord } from '../../../../models'
-import { mockAttemptRecordTableValue } from '../../../../mocks/data'
+//import { mockAttemptRecordTableValue } from '../../../../mocks/data'
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAttempt } from '../attemptSlice';
 import { useEffect, useState } from 'react';
@@ -37,10 +37,16 @@ export function AttemptRecordsTable() {
 
     const [rows, setRows] = useState<AllAttemptRecord[]>([]);
 
-    const handleViewClick = (x: string) => {
-        dispatch(fetchAttempt({ username: username, timestamp: x }));
-        navigate(`/attempt/view/${x}`);
+    const handleViewClick = (id: string) => {
+        const numericId = Number(id);
+
+        dispatch(fetchAttempt(numericId));
+        navigate(`/attempt/view/${id}`);
     };
+    // const handleViewClick = (x: string) => {
+    //     dispatch(fetchAttempt({ username: username, timestamp: x }));
+    //     navigate(`/attempt/view/${x}`);
+    // };
 
     useEffect(() => {
         const fetchRecords = async () => {
@@ -74,7 +80,7 @@ export function AttemptRecordsTable() {
         <Table
             columns = {attemptRecordsCols}
             rows = { rows }
-            onView = {handleViewClick}
+            onView = { handleViewClick }
         />
     );
 

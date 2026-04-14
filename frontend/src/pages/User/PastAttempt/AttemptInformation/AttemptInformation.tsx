@@ -8,8 +8,8 @@ export default function AttemptInformation() {
     const handleBackClick = () => {
         navigate('/attempt');
     };
-    const questionTitle: string = value.questionTitle
-    const timeStamp: string = value.timestamp
+    const questionTitle: string = value.question_text
+    const timeStamp: string = new Date(value.created_at).toLocaleString(); //value.timestamp
 
     return (
         <div>
@@ -18,8 +18,8 @@ export default function AttemptInformation() {
                 <PageTitle text = {questionTitle}/>
                 <Card label = "" text = {timeStamp}/>
                 <div class="flex justify-center p-4 gap-x-15">
-                    <TextBox label = "Submitted Solution" text = {value.submittedSolution}/>
-                    <TextBox label = "Suggested Solution" text = {value.suggestedSolution}/>
+                    <TextBox label = "Submitted Solution" text = {value.submitted_code}/>
+                    <TextBox label = "Suggested Solution" text = {value.suggested_solution ?? "N/A"}/>
                 </div>
                 <Button label = "Back" variant = "outlined" onClick = {handleBackClick}/>
             </div>

@@ -6,6 +6,7 @@ CREATE TABLE records (
 
     question_text TEXT NOT NULL,
     submitted_code TEXT NOT NULL,
+    suggested_solution TEXT NOT NULL,
 
     is_correct BOOLEAN NOT NULL,
 

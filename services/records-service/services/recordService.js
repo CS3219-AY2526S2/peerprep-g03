@@ -1,4 +1,4 @@
-import { createRecord, getRecordsByUser } from "../repositories/recordRepository.js";
+import { createRecord, getRecordsByUser, getRecordById } from "../repositories/recordRepository.js";
 
 export const createRecordService = async (data) => {
   if (
@@ -22,4 +22,8 @@ export const getRecordsService = async (user_id) => {
   }
   console.log("[RECORD] Fetching records for user:", user_id);
   return await getRecordsByUser(user_id);
+};
+
+export const fetchRecordById = async (id) => {
+  return await getRecordById(id);
 };
