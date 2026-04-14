@@ -39,7 +39,40 @@ export class RoomSessionService {
     if (!userId || !matchId) {
       throw new Error('userId and matchId are required');
     }
+    const userActiveSessionRes = await pool.query(
+        `SELECT s.room_id, s.question_id, s.status, s.match_id, su.has_submitted, s.updated_at
+         FROM sessions s
+         JOIN session_users su ON s.room_id = su.room_id
+         WHERE su.user_id = $1 
+           AND s.status = 'active'
+           AND s.match_id != 'private-room'
+         LIMIT 1`,
+        [userId]
+    );
 
+    const row = userActiveSessionRes.rows[0];
+
+    if (row && (matchId === "REJOIN_CHECK" || matchId === row.match_id)) {
+        // Calculate if the session is "Stale" (Older than 30 mins)
+        const lastUpdate = new Date(row.updated_at);
+        const diffInMinutes = (new Date().getTime() - lastUpdate.getTime()) / (1000 * 60);
+        const isStale = diffInMinutes > 30;
+
+        const partnerRes = await pool.query(
+            `SELECT user_id FROM session_users WHERE room_id = $1 AND user_id != $2 LIMIT 1`,
+            [row.room_id, userId]
+        );
+
+        return {
+            roomId: row.room_id,
+            questionId: row.question_id,
+            status: row.status,
+            partner: partnerRes.rows[0]?.user_id || 'Partner',
+            reconnected: true,
+            hasSubmitted: row.has_submitted,
+            isStale: isStale // <--- Pass this to the frontend
+        };
+    }
     // 1 matchId starts 1 session, but 2nd user joining same matchId should reuse existing session (if still active)
     const existingSessionRes = await pool.query(
       `SELECT room_id, question_id, status
@@ -296,7 +329,10 @@ export class RoomSessionService {
     if (!userId || !roomId) {
       throw new Error('userId and roomId are required');
     }
-
+    await pool.query(
+      `UPDATE session_users SET has_left = TRUE WHERE room_id = $1 AND user_id = $2`,
+      [roomId, userId]
+    );
     const session = this.sessions.get(roomId);
 
     if (!session) {
@@ -320,8 +356,8 @@ export class RoomSessionService {
 
     if (allUsersLeft) {
       session.status = 'closed';
+      await pool.query(`UPDATE sessions SET status = 'closed' WHERE room_id = $1`, [roomId]);
     }
-
     this.sessions.set(roomId, session);
 
     return {
