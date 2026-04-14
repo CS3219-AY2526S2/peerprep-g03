@@ -40,14 +40,15 @@ export class RoomSessionService {
       throw new Error('userId and matchId are required');
     }
     const userActiveSessionRes = await pool.query(
-        `SELECT s.room_id, s.question_id, s.status, s.match_id, su.has_submitted, s.updated_at
-         FROM sessions s
-         JOIN session_users su ON s.room_id = su.room_id
-         WHERE su.user_id = $1 
-           AND s.status = 'active'
-           AND s.match_id != 'private-room'
-         LIMIT 1`,
-        [userId]
+      `SELECT s.room_id, s.question_id, s.status, s.match_id, su.has_submitted, s.updated_at
+       FROM sessions s
+       JOIN session_users su ON s.room_id = su.room_id
+       WHERE su.user_id = $1 
+         AND s.status = 'active'
+         AND su.has_submitted = FALSE -- <--- ADD THIS: If true, they aren't "pending"
+         AND s.match_id != 'private-room'
+       LIMIT 1`,
+      [userId]
     );
 
     const row = userActiveSessionRes.rows[0];
@@ -56,7 +57,7 @@ export class RoomSessionService {
         // Calculate if the session is "Stale" (Older than 30 mins)
         const lastUpdate = new Date(row.updated_at);
         const diffInMinutes = (new Date().getTime() - lastUpdate.getTime()) / (1000 * 60);
-        const isStale = diffInMinutes > 30;
+        const isStale = diffInMinutes > 3;
 
         const partnerRes = await pool.query(
             `SELECT user_id FROM session_users WHERE room_id = $1 AND user_id != $2 LIMIT 1`,
@@ -369,11 +370,6 @@ export class RoomSessionService {
   }
 
   async submitSession({ userId, roomId, code }) {
-    // verify room's session is active, user is part of session, etc.
-    // verify code is valid (not empty) else store as "Missing Code"
-    // end room session for both users
-    // "you have submitted" notif for user a, "your partner has submitted" notif for user b (if still connected)
-
     if (!userId || !roomId) {
       throw new Error('userId and roomId are required');
     }
@@ -395,21 +391,15 @@ export class RoomSessionService {
       const sessionRow = sessionRes.rows[0];
       if (!sessionRow) {
         await client.query('ROLLBACK');
-        return {
-          success: false,
-          message: 'Session not found',
-        };
+        return { success: false, message: 'Session not found' };
       }
 
       if (sessionRow.status === 'closed') {
         await client.query('ROLLBACK');
-        return {
-          success: false,
-          message: 'Session is already closed',
-        };
+        return { success: false, message: 'Session is already closed' };
       }
 
-      // Verify submitting user is part of session
+      // Verify/Insert submitting user
       await client.query(
         `INSERT INTO session_users (room_id, user_id)
          VALUES ($1, $2)
@@ -425,7 +415,7 @@ export class RoomSessionService {
         [roomId, userId]
       );
 
-      // Insert submission record, update to lastest code if submission for room id exists
+      // Insert/Update submission record
       await client.query(
         `INSERT INTO submissions (room_id, submitted_by_user_id, code)
          VALUES ($1, $2, $3)
@@ -444,13 +434,13 @@ export class RoomSessionService {
         [roomId]
       );
 
-      // Close session if both users have submitted
       const allUsersSubmitted =
         sessionUsersRes.rows.length > 0 &&
         sessionUsersRes.rows.every((user) => user.has_submitted);
 
       const nextStatus = allUsersSubmitted ? 'closed' : sessionRow.status;
 
+      // Update session status and timestamp
       await client.query(
         `UPDATE sessions
          SET status = $2,
@@ -461,36 +451,47 @@ export class RoomSessionService {
 
       await client.query('COMMIT');
 
-      // Update in-memory session
-      const session = {
-        roomId: sessionRow.room_id,
-        matchId: sessionRow.match_id,
-        questionId: sessionRow.question_id,
-        users: sessionUsersRes.rows.map((user) => ({
-          userId: user.user_id,
-          hasSubmitted: user.has_submitted,
-          hasLeft: user.has_left,
-          lastActiveAt: user.last_active_at,
-        })),
-        status: nextStatus,
-        submittedUsers: sessionUsersRes.rows
-          .filter((user) => user.has_submitted)
-          .map((user) => user.user_id),
-        leftUsers: sessionUsersRes.rows
-          .filter((user) => user.has_left)
-          .map((user) => user.user_id),
-        lastSubmittedCode: code ?? 'Missing Code',
-        updatedAt: new Date().toISOString(),
-      };
+      // --- ADDED: MEMORY MANAGEMENT LOGIC ---
+      
+      if (nextStatus === 'closed') {
+        // 1. If the session is closed, remove it from memory completely
+        // This ensures REJOIN_CHECK won't find it in the cache
+        this.sessions.delete(roomId);
+        this.matchToRoom.delete(sessionRow.match_id);
+      } else {
+        // 2. If session is still active (waiting for partner), update the memory object
+        const session = {
+          roomId: sessionRow.room_id,
+          matchId: sessionRow.match_id,
+          questionId: sessionRow.question_id,
+          users: sessionUsersRes.rows.map((user) => ({
+            userId: user.user_id,
+            hasSubmitted: user.has_submitted,
+            hasLeft: user.has_left,
+            lastActiveAt: user.last_active_at,
+          })),
+          status: nextStatus,
+          submittedUsers: sessionUsersRes.rows
+            .filter((user) => user.has_submitted)
+            .map((user) => user.user_id),
+          leftUsers: sessionUsersRes.rows
+            .filter((user) => user.has_left)
+            .map((user) => user.user_id),
+          lastSubmittedCode: code ?? 'Missing Code',
+          updatedAt: new Date().toISOString(),
+        };
 
-      this.matchToRoom.set(session.matchId, roomId);
-      this.sessions.set(roomId, session);
+        this.sessions.set(roomId, session);
+        this.matchToRoom.set(session.matchId, roomId);
+      }
+      // --- END OF MEMORY MANAGEMENT ---
 
       return {
         success: true,
         message: 'Session submitted successfully',
-        status: session.status,
-        session,
+        status: nextStatus,
+        // We return the local session object or a null if closed
+        session: nextStatus === 'closed' ? null : this.sessions.get(roomId),
       };
     } catch (err) {
       await client.query('ROLLBACK');
