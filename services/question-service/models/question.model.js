@@ -31,8 +31,8 @@ async function createQuestion(title, topic, difficulty, description, templates =
 
         // Insert into questions table
         const questionRes = await client.query(
-            `INSERT INTO questions (title, description, difficulty, topic_tags) 
-             VALUES ($1, $2, $3, $4) 
+            `INSERT INTO questions (title, description, difficulty, topic_tags, created_at, updated_at) 
+             VALUES ($1, $2, $3, $4, NOW(), NOW()) 
              RETURNING *`,
             [title, description, difficulty, topicArray]
         );
@@ -74,7 +74,7 @@ async function createQuestion(title, topic, difficulty, description, templates =
 // Retrieve all questions (that aren't soft-deleted)
 async function getAllQuestions() {
   const res = await pool.query(
-    "SELECT * FROM questions WHERE is_deleted = FALSE ORDER BY created_at DESC"
+    "SELECT * FROM questions WHERE is_deleted = FALSE ORDER BY updated_at DESC"
   );
   return res.rows;
 }
@@ -168,7 +168,7 @@ async function updateQuestion(id, title, topic, difficulty, description, templat
         const res = await client.query(
             `UPDATE questions 
              SET title = $1, topic_tags = $2, difficulty = $3, description = $4,
-                 locked_by = NULL, locked_at = NULL  -- CLEAR THE LOCK HERE
+                 locked_by = NULL, locked_at = NULL, updated_at = NOW()
              WHERE id = $5 AND is_deleted = FALSE
              RETURNING *`,
             [title, Array.isArray(topic) ? topic : [topic], difficulty, description, id]
@@ -214,7 +214,7 @@ async function updateQuestion(id, title, topic, difficulty, description, templat
 // Soft delete a question
 async function deleteQuestion(id) {
   const res = await pool.query(
-    "UPDATE questions SET is_deleted = TRUE WHERE id = $1 RETURNING *",
+    "UPDATE questions SET is_deleted = TRUE, updated_at = NOW() WHERE id = $1 RETURNING *",
     [id]
   );
   return res.rows[0];
