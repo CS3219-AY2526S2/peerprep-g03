@@ -26,6 +26,8 @@ Open the link in your console
 ``` bash
 cd ..
 docker compose down
+docker compose up -d --build collab-service-rooms
+
 docker compose up --build
 ```
 
