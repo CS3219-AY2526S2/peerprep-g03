@@ -15,7 +15,7 @@ const attemptSlice = createSlice({
   name: 'attempt',
   initialState: { value: initialStateValue, stateStatus :'idle'},
   reducers: {
-      initialise: (state, action) => {
+      initialiseAttempt: (state, action) => {
           state.value = action.payload; // Manual initialise from the form
       },
   reset: (state) => {state.value = initialStateValue}
@@ -34,5 +34,5 @@ const attemptSlice = createSlice({
       });}
 });
 
-export const { initialise, reset } = attemptSlice.actions;
+export const { initialiseAttempt, reset } = attemptSlice.actions;
 export default attemptSlice.reducer;

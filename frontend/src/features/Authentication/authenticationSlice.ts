@@ -15,7 +15,7 @@ const authenticationSlice = createSlice({
   name: 'authentication',
   initialState: { value: initialStateValue, stateStatus :'idle'},
   reducers: {
-    initialise: (state,action) =>   {state.value = action.payload},
+    initialiseAuth: (state,action) =>   {state.value = action.payload},
     logout: (state) => {state.value = initialStateValue}
   },
   extraReducers: (builder) => {
@@ -32,5 +32,5 @@ const authenticationSlice = createSlice({
       });}
 });
 
-export const { logout, initialise } = authenticationSlice.actions;
+export const { logout, initialiseAuth } = authenticationSlice.actions;
 export default authenticationSlice.reducer;

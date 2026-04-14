@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header, PageTitle, Button, Card } from '../../../components';
 import { useSelector, useDispatch } from 'react-redux';
 
-import { initialise, fetchPartner, reset, resetStatus, setMatchId, setPartner, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
+import { initialiseCollab, fetchPartner, reset, resetStatus, setMatchId, setPartner, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
 import { deleteMatch, pollMatchStatus, getPartner }from '../../../services/Collaboration';
 import { startRoomSession } from '../../../services/Collaboration';
 
@@ -83,7 +83,7 @@ export default function WaitingRoom() {
                 if (result.status === "matched") {
                     // dispatch(setPartner(result.partnerId));
                     // dispatch(setMatchId(result.matchId));
-                    dispatch(initialise({
+                    dispatch(initialiseCollab({
                         partner: result.partnerId,
                         matchId: result.matchId,
                     }));
@@ -131,6 +131,23 @@ export default function WaitingRoom() {
             }
         };
 
+    const saveSessionToLocalStorage = (
+        username: string,
+        roomId: string,
+        partner: string,
+        question: string
+        ) => {
+        localStorage.setItem(
+            'collabSession',
+            JSON.stringify({
+            username,
+            roomId,
+            partner,
+            question,
+            })
+        )
+    }
+
     const navigate = useNavigate();
     const handleContinueClick = async () => {
         // Add dispatch to inialise partner here for state.collabboration
@@ -145,7 +162,21 @@ export default function WaitingRoom() {
             // TODO: Create room and set partner in state.collaboration or via a separate room
             const session = await startRoomSession(username, matchId);
 
+
             dispatch(setRoomId(session.roomId));
+            localStorage.setItem(
+                'collabSession',
+                JSON.stringify({
+                username: authValue.username,
+                role: authValue.role,
+                roomId: collabValue.roomId,
+                partner: collabValue.partner,
+                question: collabValue.question,
+                })
+            )
+
+            const savedSession = localStorage.getItem('collabSession');
+            console.log('Saved session in localStorage:', savedSession);
 
 
             await deleteMatch(username);

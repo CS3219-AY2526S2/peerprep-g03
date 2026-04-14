@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header, PageTitle, DropDown, Button, ErrorMessage, convertEnumsToDropDownOption, Dialog } from '../../../components';
 import { getBlankFieldError } from '../../../commons'
 import { useSelector, useDispatch } from 'react-redux';
-import { initialise, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
+import { initialiseCollab, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
 import { QuestionTopic, ProgrammingLanguage, QuestionDifficultyMatching } from '../../../models';
 import { getQuestionUser } from '../../../services/Questions';
 import { startRoomSession } from '../../../services/Collaboration';
@@ -44,7 +44,7 @@ export default function QuestionSetting() {
         try {
             setIsLoading(true);
             const questionData = await getQuestionUser(formData.questionTopic, formData.questionDifficulty, formData.programmingLanguage)
-            dispatch(initialise({
+            dispatch(initialiseCollab({
                     questionTopic: formData.questionTopic,
                     questionDifficulty: formData.questionDifficulty,
                     programmingLanguage: formData.programmingLanguage,
@@ -52,14 +52,14 @@ export default function QuestionSetting() {
                     question: questionData.description,
                     }))
             setIsLoading(false);
-            return true;
+            return questionData;
         } catch (e) {
             setIsLoading(false);
             if (e.response && e.response.status === 404) {
                   setIsDialogOpen(true)
             }
             console.error("Fetch failed:", e);
-            return false;
+            return null;
         }
     }
 
@@ -89,16 +89,30 @@ export default function QuestionSetting() {
     };
 
     const handleJustMeClick = async () => {
-        const success = await saveSetting();
-        if (success) {
+        const questionData = await saveSetting();
+        if (questionData) {
             try {
                 // not redux
                 const matchId = generateSoloId();
     
                 // TODO: Create room and set partner in state.collaboration or via a separate room
-                const session = await startRoomSession(username, matchId);
+                const session = await startRoomSession(username, matchId);            
     
                 dispatch(setRoomId(session.roomId));
+
+                localStorage.setItem(
+                    'collabSession',
+                    JSON.stringify({
+                    username: authValue.username,
+                    role: authValue.role,
+                    roomId: session.roomId,
+                    partner: collabValue.partner,
+                    question: questionData.description,
+                    })
+                )
+
+                const savedSession = localStorage.getItem('collabSession');
+                console.log('Saved session in localStorage:', savedSession);
     
                 navigate(`/collaboration`);
     
@@ -109,8 +123,8 @@ export default function QuestionSetting() {
     };
 
     const handleFindFriendClick = async () => {
-        const success = await saveSetting();
-        if (success) {
+        const questionData = await saveSetting();
+        if (questionData) { 
             navigate(`/waiting-room`);
         }
     };

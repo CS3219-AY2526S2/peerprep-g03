@@ -47,7 +47,7 @@ const collaborationSlice = createSlice({
     name: 'collaboration',
     initialState: { value: initialStateValue, stateStatus :'idle'},
     reducers: {
-        initialise: (state, action) => {
+        initialiseCollab: (state, action) => {
             state.value = {
                 ...state.value,
                 ...action.payload
@@ -83,5 +83,5 @@ const collaborationSlice = createSlice({
     }
 });
 
-export const { initialise, reset, resetStatus, setPartner, setMatchId, setRoomId } = collaborationSlice.actions;
+export const { initialiseCollab, reset, resetStatus, setPartner, setMatchId, setRoomId } = collaborationSlice.actions;
 export default collaborationSlice.reducer;

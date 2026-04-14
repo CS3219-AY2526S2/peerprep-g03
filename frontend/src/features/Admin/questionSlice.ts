@@ -110,7 +110,7 @@ const questionSlice = createSlice({
   name: 'question',
   initialState,
   reducers: {
-    initialise: (state, action) => {
+    initialiseQns: (state, action) => {
         state.value = action.payload; // Manual initialise from the form
     },
     reset: (state) => {
@@ -204,5 +204,5 @@ const questionSlice = createSlice({
     });
     }
 });
-export const { reset, initialise } = questionSlice.actions;
+export const { reset, initialiseQns } = questionSlice.actions;
 export default questionSlice.reducer;
