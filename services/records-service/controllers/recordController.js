@@ -1,98 +1,122 @@
-import * as service from "../services/recordService.js";
+import { createRecordService, getRecordsService } from "../services/recordService.js";
 
-export const createRecord = async (req, res) => {
+// POST /records
+export const createRecordController = async (req, res) => {
   try {
-    const { user_id, question_id, collaborators, submitted_code, result } = req.body;
-
-    if (!user_id || !question_id || !submitted_code) {
-      return res.status(400).json({
-        error: "Missing required fields",
-      });
-    }
-
-    const record = await service.createRecord({
-      user_id,
-      question_id,
-      collaborators,
-      submitted_code,
-      result,
-    });
-
-    console.log("[SUCCESS] Record created:", record.id);
-
+    const record = await createRecordService(req.body);
     res.status(201).json(record);
   } catch (err) {
-    console.error("[REAL ERROR]", err);
-
-    res.status(500).json({
-      error: err.message,          
-      detail: err.detail || null,
-      code: err.code || null
-    });
+    res.status(400).json({ error: err.message });
   }
 };
 
-export const getUserRecords = async (req, res) => {
+
+// GET /records?user_id=1
+export const getRecordsController = async (req, res) => {
   try {
     const { user_id } = req.query;
 
-    if (!user_id) {
-      return res.status(400).json({
-        error: "user_id query param required",
-      });
-    }
-
-    const records = await service.getUserRecords(user_id);
-    res.json(records);
+    const records = await getRecordsService(user_id);
+    res.status(200).json(records);
   } catch (err) {
-    console.error("[ERROR] Fetch user records failed:", err);
-    res.status(500).json({ error: "Failed to fetch records" });
+    res.status(400).json({ error: err.message });
   }
 };
 
-export const getRecord = async (req, res) => {
-  try {
-    const record = await service.getRecord(req.params.id);
 
-    if (!record) {
-      return res.status(404).json({ error: "Record not found" });
-    }
+// export const createRecord = async (req, res) => {
+//   try {
+//     const { user_id, question_id, collaborators, submitted_code, result } = req.body;
 
-    res.json(record);
-  } catch (err) {
-    console.error("[ERROR] Fetch record failed:", err);
-    res.status(500).json({ error: "Failed to fetch record" });
-  }
-};
+//     if (!user_id || !question_id || !submitted_code) {
+//       return res.status(400).json({
+//         error: "Missing required fields",
+//       });
+//     }
 
-export const createBulkRecords = async (req, res) => {
-  try {
-    const { users, question_id, submitted_code, result } = req.body;
+//     const record = await service.createRecord({
+//       user_id,
+//       question_id,
+//       collaborators,
+//       submitted_code,
+//       result,
+//     });
 
-    if (!users || !Array.isArray(users) || users.length === 0) {
-      return res.status(400).json({ error: "users array required" });
-    }
+//     console.log("[SUCCESS] Record created:", record.id);
 
-    if (!question_id || !submitted_code) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+//     res.status(201).json(record);
+//   } catch (err) {
+//     console.error("[REAL ERROR]", err);
 
-    const records = await service.createBulkRecords({
-      users,
-      question_id,
-      submitted_code,
-      result,
-    });
+//     res.status(500).json({
+//       error: err.message,          
+//       detail: err.detail || null,
+//       code: err.code || null
+//     });
+//   }
+// };
 
-    res.status(201).json(records);
+// export const getUserRecords = async (req, res) => {
+//   try {
+//     const { user_id } = req.query;
 
-  } catch (err) {
-    console.error("[REAL ERROR BULK]", err);
+//     if (!user_id) {
+//       return res.status(400).json({
+//         error: "user_id query param required",
+//       });
+//     }
 
-    res.status(500).json({
-      error: err.message,
-      detail: err.detail || null,
-      code: err.code || null
-    });
-  }
-};
+//     const records = await service.getUserRecords(user_id);
+//     res.json(records);
+//   } catch (err) {
+//     console.error("[ERROR] Fetch user records failed:", err);
+//     res.status(500).json({ error: "Failed to fetch records" });
+//   }
+// };
+
+// export const getRecord = async (req, res) => {
+//   try {
+//     const record = await service.getRecord(req.params.id);
+
+//     if (!record) {
+//       return res.status(404).json({ error: "Record not found" });
+//     }
+
+//     res.json(record);
+//   } catch (err) {
+//     console.error("[ERROR] Fetch record failed:", err);
+//     res.status(500).json({ error: "Failed to fetch record" });
+//   }
+// };
+
+// export const createBulkRecords = async (req, res) => {
+//   try {
+//     const { users, question_id, submitted_code, result } = req.body;
+
+//     if (!users || !Array.isArray(users) || users.length === 0) {
+//       return res.status(400).json({ error: "users array required" });
+//     }
+
+//     if (!question_id || !submitted_code) {
+//       return res.status(400).json({ error: "Missing required fields" });
+//     }
+
+//     const records = await service.createBulkRecords({
+//       users,
+//       question_id,
+//       submitted_code,
+//       result,
+//     });
+
+//     res.status(201).json(records);
+
+//   } catch (err) {
+//     console.error("[REAL ERROR BULK]", err);
+
+//     res.status(500).json({
+//       error: err.message,
+//       detail: err.detail || null,
+//       code: err.code || null
+//     });
+//   }
+// };

@@ -29,15 +29,27 @@ export function Code() {
         navigate('/start');
     };
 
-    const handleSubmitClick = () => {
+    // remove and change to the bottom one if needed
+    const handleSubmitClick = async() => {
         const question: string = collabValue.question
         const partner: string = collabValue.partner
         const timestamp = new Date().toISOString();
         const username: string = authValue.username
-        postAttempt(timestamp, username, partner, question, "Sample code")
+        await postAttempt(timestamp, username, partner, question, "Sample code")
         dispatch(reset())
         navigate('/start');
     };
+
+    // === changed to test records service ===
+    // const handleSubmitClick = () => {
+    //     const question: string = collabValue.question
+    //     const partner: string = collabValue.partner
+    //     const timestamp = new Date().toISOString();
+    //     const username: string = authValue.username
+    //     postAttempt(timestamp, username, partner, question, "Sample code")
+    //     dispatch(reset())
+    //     navigate('/start');
+    // };
 
     return (
         <div class="flex flex-col justify-center p-2 py-4">

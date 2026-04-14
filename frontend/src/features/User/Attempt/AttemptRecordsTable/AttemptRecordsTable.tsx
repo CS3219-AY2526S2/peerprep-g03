@@ -4,9 +4,11 @@ import { AllAttemptRecord } from '../../../../models'
 import { mockAttemptRecordTableValue } from '../../../../mocks/data'
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAttempt } from '../attemptSlice';
+import { useEffect, useState } from 'react';
 
 
-const attemptRecordsCols: { id: keyof AllAttemptRecord;
+const attemptRecordsCols: { 
+    id: keyof AllAttemptRecord;
     label: string; minWidth?:
     number; hidden?:boolean,
     defaultValue?:
@@ -23,17 +25,55 @@ export function AttemptRecordsTable() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { value, status } = useSelector((state) => state.authentication);
-    const username:string = value.username
+    // const username:string = value.username
 
-    const handleViewClick = (x:string) => {
-        dispatch(fetchAttempt({username: username, timestamp: x}))
+    // const handleViewClick = (x:string) => {
+    //     dispatch(fetchAttempt({username: username, timestamp: x}))
+    //     navigate(`/attempt/view/${x}`);
+    // };
+
+    const userId = value?.user_id || 1; // fallback for now
+    const username: string = value?.username || "user1";
+
+    const [rows, setRows] = useState<AllAttemptRecord[]>([]);
+
+    const handleViewClick = (x: string) => {
+        dispatch(fetchAttempt({ username: username, timestamp: x }));
         navigate(`/attempt/view/${x}`);
     };
+
+    useEffect(() => {
+        const fetchRecords = async () => {
+            try {
+                const res = await fetch(`http://localhost:3004/records?user_id=${userId}`);
+                const data = await res.json();
+
+                // map backend → frontend format
+                const mapped: AllAttemptRecord[] = data.map((r: any) => ({
+                    id: r.id,
+                    username: `user${r.user1_id}`, // temp
+                    questionTitle: r.question_text,
+                    questionTopic: r.question_topic,
+                    questionDifficulty: r.difficulty,
+                    collaborator:
+                        r.user1_id === userId
+                            ? `user${r.user2_id}`
+                            : `user${r.user1_id}`,
+                }));
+
+                setRows(mapped);
+            } catch (err) {
+                console.error("Failed to fetch records:", err);
+            }
+        };
+
+        fetchRecords();
+    }, [userId]);
 
     return (
         <Table
             columns = {attemptRecordsCols}
-            rows = { mockAttemptRecordTableValue }
+            rows = { rows }
             onView = {handleViewClick}
         />
     );

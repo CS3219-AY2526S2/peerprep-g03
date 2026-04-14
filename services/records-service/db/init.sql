@@ -1,9 +1,17 @@
 CREATE TABLE records (
     id SERIAL PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    question_id TEXT NOT NULL,
-    collaborators TEXT[] NOT NULL,
+
+    user1_id INTEGER NOT NULL,
+    user2_id INTEGER NOT NULL,
+
+    question_text TEXT NOT NULL,
     submitted_code TEXT NOT NULL,
-    result JSONB,
+
+    is_correct BOOLEAN NOT NULL,
+
+    programming_language VARCHAR(50),
+    question_topic VARCHAR(50),
+    difficulty VARCHAR(50),
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

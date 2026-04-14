@@ -1,45 +1,25 @@
-import * as repo from "../repositories/recordRepository.js";
+import { createRecord, getRecordsByUser } from "../repositories/recordRepository.js";
 
-export const createRecord = async (payload) => {
-  const record = {
-    user_id: payload.user_id,
-    question_id: payload.question_id,
-    collaborators: payload.collaborators || [],
-    submitted_code: payload.submitted_code,
-    result: payload.result || null,
-  };
-
-  console.log("[SERVICE] Creating record:", record);
-
-  return await repo.createRecord(record);
-};
-
-export const getUserRecords = async (user_id) => {
-  console.log("[SERVICE] Fetching records for user:", user_id);
-  return await repo.getRecordsByUser(user_id);
-};
-
-export const getRecord = async (id) => {
-  console.log("[SERVICE] Fetching record:", id);
-  return await repo.getRecordById(id);
-};
-
-export const createBulkRecords = async ({ users, question_id, submitted_code, result }) => {
-  const created = [];
-
-  for (const user of users) {
-    const collaborators = users.filter(u => u !== user);
-
-    const record = await createRecord({
-      user_id: user,
-      question_id,
-      collaborators,
-      submitted_code,
-      result,
-    });
-
-    created.push(record);
+export const createRecordService = async (data) => {
+  if (
+    !data.user1_id ||
+    !data.user2_id ||
+    !data.question_text ||
+    !data.submitted_code ||
+    data.is_correct === undefined
+  ) {
+    throw new Error("Missing required fields");
   }
 
-  return created;
+  //console.log("[RECORD] Creating record:", data);
+
+  return await createRecord(data);
+};
+
+export const getRecordsService = async (user_id) => {
+  if (!user_id){
+    console.log("[RECORD] User ID is required");
+  }
+  console.log("[RECORD] Fetching records for user:", user_id);
+  return await getRecordsByUser(user_id);
 };
