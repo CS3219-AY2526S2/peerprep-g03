@@ -169,19 +169,22 @@ export function Code() {
     }
   
 
-    const handleQuitClick = async () => {
-      try {
-        if (roomId && roomId !== 'private-room') {
-          await leaveRoomSession(username, roomId)
+const handleQuitClick = async () => {
+    try {
+        // Only trigger the leave service if it's a real room session
+        if (roomId && roomId !== 'private-room' && username) {
+            console.log(`User ${username} is leaving room ${roomId}`);
+            await leaveRoomSession(username, roomId);
         }
-      } catch (err) {
-        console.error('Failed to leave room session', err)
-      } finally {
-        cleanupCollabResources()
-        dispatch(reset())
-        navigate('/start')
-      }
+    } catch (err) {
+        console.error('Failed to leave room session:', err);
+    } finally {
+        // ALWAYS clean up resources and redirect, even if the API call fails
+        cleanupCollabResources();
+        dispatch(reset()); // Clears partner info, roomId, etc. in Redux
+        navigate('/start');
     }
+};
 
     const handleSubmitClick = async () => {
       const timestamp = new Date().toISOString()
@@ -285,7 +288,28 @@ export function Code() {
         }
       })
     }
+    useEffect(() => {
+    const handleTabClose = () => {
+        // Standard cleanup for the current user
+        if (roomId && roomId !== 'private-room' && username) {
+            const url = `http://localhost:3002/api/room-session/leave`;
+            
+            // Using fetch with keepalive is the most reliable way to send a request 
+            // during a page unload (better than standard axios here)
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: username, roomId }),
+                keepalive: true
+            });
+        }
+    };
 
+    window.addEventListener('beforeunload', handleTabClose);
+    return () => {
+        window.removeEventListener('beforeunload', handleTabClose);
+    };
+}, [roomId, username]);
     useEffect(() => {
       return () => {
         bindingRef.current?.destroy()

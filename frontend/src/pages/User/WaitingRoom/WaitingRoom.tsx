@@ -3,207 +3,224 @@ import { useNavigate } from 'react-router-dom';
 import { Header, PageTitle, Button, Card } from '../../../components';
 import { useSelector, useDispatch } from 'react-redux';
 
-import { initialiseCollab, fetchPartner, reset, resetStatus, setMatchId, setPartner, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
-import { deleteMatch, pollMatchStatus, getPartner }from '../../../services/Collaboration';
+import { initialiseCollab, reset, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
+import { deleteMatch, pollMatchStatus, getPartner } from '../../../services/Collaboration';
 import { startRoomSession } from '../../../services/Collaboration';
 
-
 const statusMessage = {
-    UNEXPECTED_ERROR : () => 'Unexpected Error. Click "Back".',
-    FINDING_PARTNER : () => 'Waiting for partner.',
-    NO_PARTNER_FOUND : () => 'No partner found. \n Click "Continue" to try it yourself. ',
-    PARTNER_FOUND : (partnerName: string ) => `Partner found - ${partnerName}. \n Click "Continue" to join your partner. `
+    UNEXPECTED_ERROR: () => 'Unexpected Error. Click "Back".',
+    FINDING_PARTNER: () => 'Waiting for partner.',
+    NO_PARTNER_FOUND: () => 'No partner found. \n Click "Continue" to try it yourself. ',
+    PARTNER_FOUND: (partnerName: string) => `Partner found - ${partnerName}. \n Click "Continue" to join your partner. `,
+    EXISTING_SESSION: (partnerName: string) => `Unfinished session found with ${partnerName}. \n You must complete this session before starting a new one.`,
+    OPTIONAL_REJOIN: (partnerName: string) => `You have an active session with ${partnerName}. \n You can rejoin them or find a new match.`
 } as const;
 
 export default function WaitingRoom() {
-    const [partnerStatus, setPartnerStatus] = useState<string>(statusMessage.FINDING_PARTNER());
-    const [isMatched, setIsMatched] = useState(false);
-
-    const {
-        value: collabValue,
-        stateStatus: collabStatus
-    } = useSelector((state) => state.collaboration);
-
-    const {
-        value: authValue,
-        stateStatus: authStatus
-    } = useSelector((state) => state.authentication);
-
-    const questionTopic: string = collabValue.questionTopic
-    const questionDifficulty: string = collabValue.questionDifficulty
-    const programmingLanguage: string = collabValue.programmingLanguage
-    const partner: string = collabValue.partner
-    const matchId: string = collabValue.matchId ?? ''
-    const username: string = authValue.username
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const dispatch = useDispatch();
+    const [partnerStatus, setPartnerStatus] = useState<string>(statusMessage.FINDING_PARTNER());
+    const [isMatched, setIsMatched] = useState(false);
+    
+    // ENHANCEMENT STATES
+    const [hasExistingSession, setHasExistingSession] = useState(false);
+    const [hasUserSubmittedExisting, setHasUserSubmittedExisting] = useState(false);
+
+    const { value: collabValue } = useSelector((state: any) => state.collaboration);
+    const { value: authValue } = useSelector((state: any) => state.authentication);
+
+    const questionTopic: string = collabValue.questionTopic;
+    const questionDifficulty: string = collabValue.questionDifficulty;
+    const programmingLanguage: string = collabValue.programmingLanguage;
+    const username: string = authValue.username;
+
+    // --- ENHANCEMENT: Standalone Matchmaking Logic ---
+    const runMatchmakingSequence = async (signal: AbortSignal) => {
+        try {
+            setPartnerStatus(statusMessage.FINDING_PARTNER());
+            await getPartner(username, questionTopic, questionDifficulty, programmingLanguage);
+
+            await new Promise((resolve, reject) => {
+                const timer = setTimeout(resolve, 5000);
+                signal.addEventListener('abort', () => {
+                    clearTimeout(timer);
+                    reject(new DOMException("Aborted", "AbortError"));
+                });
+            });
+
+            const result = await pollMatchStatus(username, signal);
+            if (result.status === "matched") {
+                dispatch(initialiseCollab({ partner: result.partnerId, matchId: result.matchId }));
+                setPartnerStatus(statusMessage.PARTNER_FOUND(result.partnerId));
+                setIsMatched(true);
+            } else if (result.status === "expired") {
+                setPartnerStatus(statusMessage.NO_PARTNER_FOUND());
+                setIsMatched(true);
+            }
+        } catch (err: any) {
+            if (err.name !== 'AbortError') setPartnerStatus(statusMessage.NO_PARTNER_FOUND());
+        }
+    };
 
     useEffect(() => {
-      const handleTabClose = () => {
-
-          navigator.sendBeacon(`http://localhost:3003/api/match/exit-tab/${username}`);
+        const handleTabClose = () => {
+            navigator.sendBeacon(`http://localhost:3003/api/match/exit-tab/${username}`);
         };
-
-
         window.addEventListener('pagehide', handleTabClose);
-
-        return () => {
-          window.removeEventListener('pagehide', handleTabClose);
-        };
-      }, []);
+        return () => window.removeEventListener('pagehide', handleTabClose);
+    }, [username]);
 
     useEffect(() => {
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
-        const startSequence = async () => {
+        const checkSessionAndInitialize = async () => {
             try {
-                // 1. Send the initial request to join the queue
-                // (Assuming fetchPartner is a thunk or you call the service directly)
-                setPartnerStatus(statusMessage.FINDING_PARTNER());
-                // await dispatch(fetchPartner({ username, questionTopic, questionDifficulty, programmingLanguage })).unwrap();
-                await getPartner(username, questionTopic, questionDifficulty, programmingLanguage)
-                console.log("Initial request sent. Waiting 5 seconds...");
+                // 1. GATEKEEPER: Check for existing rooms
+                const checkSession = await startRoomSession(username, "REJOIN_CHECK");
+                
+                if (checkSession && checkSession.roomId && checkSession.status === 'active') {
+                    const isLockLifted = !!checkSession.hasSubmitted || !!checkSession.isStale;
+                    setHasExistingSession(true);
+                    setHasUserSubmittedExisting(isLockLifted);
 
-                // 2. Delay for 5 seconds
-                // We check signal.aborted to ensure we don't wait if user already clicked 'Back'
-                await new Promise((resolve, reject) => {
-                    const timer = setTimeout(resolve, 5000);
-                    abortController.signal.addEventListener('abort', () => {
-                        clearTimeout(timer);
-                        reject(new DOMException("Aborted", "AbortError"));
-                    });
-                });
-
-                // 3. Start Polling
-                console.log("Starting poll...");
-                const result = await pollMatchStatus(username, abortController.signal);
-
-                if (result.status === "matched") {
-                    // dispatch(setPartner(result.partnerId));
-                    // dispatch(setMatchId(result.matchId));
                     dispatch(initialiseCollab({
-                        partner: result.partnerId,
-                        matchId: result.matchId,
+                        roomId: checkSession.roomId,
+                        partner: checkSession.partner,
+                        isStale: checkSession.isStale 
                     }));
 
-                    console.log("Partner found", result);
-                    setPartnerStatus(statusMessage.PARTNER_FOUND(result.partnerId));
-                    setIsMatched(true);
-
-                    // Handle success here
-                }
-
-                if (result.status === "expired") {
-                    setPartnerStatus(statusMessage.NO_PARTNER_FOUND());
-                // Handle timeout here
-                }
-            } catch (err: any) {
-                setPartnerStatus(statusMessage.NO_PARTNER_FOUND());
-                if (err.name === 'AbortError') {
-                    console.log("Sequence cancelled by user.");
+                    if (!isLockLifted) {
+                        setIsMatched(true);
+                        setPartnerStatus(statusMessage.EXISTING_SESSION(checkSession.partner || 'your partner'));
+                    } else {
+                        // Soft Lock: DO NOT call matchmaking automatically
+                        setPartnerStatus(statusMessage.OPTIONAL_REJOIN(checkSession.partner || 'your partner'));
+                    }
                 } else {
-                    console.error("Matchmaking sequence failed:", err);
+                    // No existing session: Proceed to normal matchmaking
+                    runMatchmakingSequence(abortController.signal);
+                }
+            } catch (err) {
+                runMatchmakingSequence(abortController.signal);
+            }
+        };
+
+        if (username) checkSessionAndInitialize();
+        return () => abortController.abort();
+    }, [username]); // Dependencies trimmed to avoid re-triggering on collabValue changes
+
+
+
+    const handleContinueClick = async () => {
+        try {
+            let finalRoomId = collabValue.roomId;
+            if (!finalRoomId || partnerStatus.includes("Partner found")) {
+                const matchId = collabValue.matchId;
+                if (matchId) {
+                    const session = await startRoomSession(username, matchId);
+                    finalRoomId = session.roomId;
+
+                    
+                    dispatch(setRoomId(session.roomId));
+                    localStorage.setItem(
+                        'collabSession',
+                        JSON.stringify({
+                        username: authValue.username,
+                        role: authValue.role,
+                        roomId: collabValue.roomId,
+                        partner: collabValue.partner,
+                        question: collabValue.question,
+                        })
+                    )
+
+                    const savedSession = localStorage.getItem('collabSession');
+                    console.log('Saved session in localStorage:', savedSession);
+
                 }
             }
-        };
-
-        startSequence();
-
-        return () => {
-            abortController.abort();
-        };
-    }, [dispatch, username, questionTopic, questionDifficulty, programmingLanguage]);
-
-
-        const handleBackClick = async () => {
-            // 5. Stop polling immediately
-            abortControllerRef.current?.abort();
-
-            try {
+            if (finalRoomId) {
+                dispatch(setRoomId(finalRoomId));
                 await deleteMatch(username);
-                navigate('/start');
-                dispatch(reset());
-
-            } catch (err) {
-                console.error("Failed to cancel match", err);
+                navigate(`/collaboration`);
             }
-        };
-
-    const saveSessionToLocalStorage = (
-        username: string,
-        roomId: string,
-        partner: string,
-        question: string
-        ) => {
-        localStorage.setItem(
-            'collabSession',
-            JSON.stringify({
-            username,
-            roomId,
-            partner,
-            question,
-            })
-        )
-    }
-
-    const navigate = useNavigate();
-    const handleContinueClick = async () => {
-        // Add dispatch to inialise partner here for state.collabboration
-        try {
-            const matchId = collabValue.matchId;
-
-            if (!matchId) {
-                console.error('No matchId found in Redux');
-                return;
-            }
-
-            // TODO: Create room and set partner in state.collaboration or via a separate room
-            const session = await startRoomSession(username, matchId);
-
-
-            dispatch(setRoomId(session.roomId));
-            localStorage.setItem(
-                'collabSession',
-                JSON.stringify({
-                username: authValue.username,
-                role: authValue.role,
-                roomId: collabValue.roomId,
-                partner: collabValue.partner,
-                question: collabValue.question,
-                })
-            )
-
-            const savedSession = localStorage.getItem('collabSession');
-            console.log('Saved session in localStorage:', savedSession);
-
-
-            await deleteMatch(username);
-            navigate(`/collaboration`);
-
         } catch (err) {
             console.error('Failed to start room session', err);
         }
     };
 
 
+    const handleIgnoreSession = () => {
+        setHasExistingSession(false);
+        setHasUserSubmittedExisting(false);
+        // --- ENHANCEMENT: Trigger matchmaking ONLY after user choice ---
+        if (abortControllerRef.current) {
+            runMatchmakingSequence(abortControllerRef.current.signal);
+        }
+    };
 
+    const handleBackClick = async () => {
+        abortControllerRef.current?.abort();
+        try {
+            await deleteMatch(username);
+            dispatch(reset());
+            navigate('/start');
+        } catch (err) {
+            console.error("Failed to cancel match", err);
+        }
+    };
 
     return (
         <div>
-            <Header/>
-            <div className = "p-5 whitespace-pre-line">
-                <PageTitle text = "Waiting Room"/>
-                <div class="flex flex-col justify-center p-4 gap-y-3 items-center">
-                    <Card label = "Question Type:" text = {questionTopic}/>
-                    <Card label = "Question Difficulty:" text = {questionDifficulty}/>
-                    <Card label = "Programming Language:" text = {programmingLanguage}/>
-                    <Card label = "Status" text = {partnerStatus}/>
-                    <div class="flex justify-center p-4 gap-x-15">
-                        <Button label = "Back" onClick = {handleBackClick}/>
-                        <Button label = "Continue"onClick = {handleContinueClick}
-                            disabled={partnerStatus == statusMessage.UNEXPECTED_ERROR() || partnerStatus == statusMessage.FINDING_PARTNER()}/>
+            <Header />
+            <div className="p-5 whitespace-pre-line">
+                <PageTitle text={hasExistingSession && !hasUserSubmittedExisting ? "Action Required" : "Waiting Room"} />
+                <div className="flex flex-col justify-center p-4 gap-y-3 items-center">
+                    
+                    {hasExistingSession && (
+                        <div className={`p-6 rounded-2xl text-center mb-4 max-w-md border-2 animate-in fade-in zoom-in duration-300 
+                            ${hasUserSubmittedExisting ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
+                             <span className="text-4xl mb-2 block">{hasUserSubmittedExisting ? 'ℹ️' : '⚠️'}</span>
+                             <p className={`${hasUserSubmittedExisting ? 'text-blue-900' : 'text-orange-900'} font-bold text-lg`}>
+                                {hasUserSubmittedExisting ? 'Session Status Update' : 'Unfinished Task'}
+                             </p>
+                             <p className={`${hasUserSubmittedExisting ? 'text-blue-700' : 'text-orange-700'} text-sm mt-2`}>
+                                {hasUserSubmittedExisting 
+                                    ? collabValue.isStale 
+                                        ? "Your previous session has timed out (30+ mins). You can rejoin or find a new match."
+                                        : "You've submitted your code, but you can still go back to help your partner."
+                                    : "You cannot start a new match while your previous partner is still in the room. Please rejoin and submit your work."}
+                             </p>
+                             {hasUserSubmittedExisting && (
+                                <div className="mt-4 flex gap-2 justify-center">
+                                    <Button label="Rejoin Previous" variant="outlined" onClick={handleContinueClick} />
+                                    <Button label="Ignore & Find New" onClick={handleIgnoreSession} />
+                                </div>
+                             )}
+                        </div>
+                    )}
+
+                    {!hasExistingSession && (
+                        <>
+                            <Card label="Question Type:" text={questionTopic} />
+                            <Card label="Question Difficulty:" text={questionDifficulty} />
+                            <Card label="Programming Language:" text={programmingLanguage} />
+                        </>
+                    )}
+                    
+                    <Card label="Status" text={partnerStatus} />
+                    
+                    <div className="flex justify-center p-4 gap-x-15">
+                        <Button label="Back" onClick={handleBackClick} />
+                        {(!hasUserSubmittedExisting || !hasExistingSession) && (
+                            <Button 
+                                label={hasExistingSession ? "Rejoin & Finish" : "Continue"} 
+                                onClick={handleContinueClick}
+                                disabled={!isMatched || partnerStatus === statusMessage.UNEXPECTED_ERROR() || partnerStatus === statusMessage.FINDING_PARTNER()}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

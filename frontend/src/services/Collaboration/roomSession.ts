@@ -9,6 +9,11 @@ type StartRoomSessionResponse = {
   roomId: string;
   questionId?: string;
   status?: string;
+  partner?: string;
+  hasSubmitted?: boolean;
+  isStale?: boolean;
+  reconnected?: boolean;
+  reused?: boolean;
 };
 
 type ReconnectRoomSessionResponse = {

@@ -14,6 +14,7 @@ const initialStateValue = {
     matchId: null,
     roomId: null,
     solution: null,
+    isReconnecting: false,
 }
 
 export const fetchPartner = createAsyncThunk(
@@ -52,7 +53,12 @@ const collaborationSlice = createSlice({
                 ...state.value,
                 ...action.payload
             };
+            if (action.payload.roomId) {
+                state.stateStatus = 'succeeded';
+            }
         },
+        
+
         setPartner: (state, action) => {
             state.value.partner = action.payload;
             state.stateStatus = 'succeeded';
