@@ -1,6 +1,7 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import * as httpMocks from 'node-mocks-http';
 
+// Mock the AI SDK for controller tests.
 const mockPipe = jest.fn();
 const mockStreamText = jest.fn(() => ({
   pipeDataStreamToResponse: mockPipe,

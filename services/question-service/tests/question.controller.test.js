@@ -2,9 +2,10 @@ const QuestionController = require('../controllers/question.controller');
 const QuestionModel = require('../models/question.model');
 const httpMocks = require('node-mocks-http');
 
-// Mock the model functions entirely
+// Mock the model for controller tests.
 jest.mock('../models/question.model');
 
+// Cover the main controller success and error paths.
 describe('Question Controller Unit Tests', () => {
     let req, res;
 

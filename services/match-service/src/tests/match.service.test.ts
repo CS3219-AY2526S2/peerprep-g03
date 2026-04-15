@@ -1,5 +1,6 @@
 import { MatchService } from '../services/matchService';
 
+// Service tests use mocked Redis and repository calls.
 describe('MatchService', () => {
   let redis: any;
   let matchRepo: any;

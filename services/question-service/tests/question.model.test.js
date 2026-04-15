@@ -1,6 +1,7 @@
 const QuestionModel = require('../models/question.model');
 const { _mockPool, _mockClient } = require('pg');
 
+// Model tests run against mocked pg clients.
 describe('Question Model - Advanced Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();

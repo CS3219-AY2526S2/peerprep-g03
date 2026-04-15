@@ -7,6 +7,7 @@ const {
   validateUsername,
 } = require('../utils/validation');
 
+// Validation tests mock password strength scoring.
 describe('validation utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();

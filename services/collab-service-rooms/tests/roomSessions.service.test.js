@@ -1,5 +1,6 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
+// Service tests mock database access.
 const mockPoolQuery = jest.fn();
 const mockClientQuery = jest.fn();
 const mockClientRelease = jest.fn();
@@ -19,6 +20,7 @@ jest.unstable_mockModule('../pool.js', () => ({
 
 const { RoomSessionService } = await import('../services/roomSessionService.js');
 
+// These cases cover the main room session flows.
 describe('RoomSessionService', () => {
   let service;
 
