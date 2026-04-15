@@ -270,6 +270,7 @@ export default function WaitingRoom() {
                              </p>
                              {hasUserSubmittedExisting && (
                                 <div className="mt-4 flex gap-2 justify-center">
+                                    <Button label="Rejoin & Submit" onClick={handleRejoinClick} />
                                     <Button label="Ignore & Find New" onClick={handleIgnoreSession} />
                                 </div>
                              )}
