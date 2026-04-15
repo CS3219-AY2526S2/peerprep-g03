@@ -184,7 +184,7 @@ export function Code() {
             body: JSON.stringify({
                 user1_username: username.toLowerCase(),
                 user2_username: partnerName.toLowerCase(),
-                question_text: questionDescription,
+                question_text: questionTitle,
                 submitted_code: sharedDocument,
 
                 // FROM QUESTION SERVICE (MOCKED DATA)
