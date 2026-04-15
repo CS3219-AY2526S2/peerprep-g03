@@ -83,7 +83,20 @@ export default function WaitingRoom() {
                 const checkSession = await startRoomSession(username, "REJOIN_CHECK");
                 
                 if (checkSession && checkSession.roomId && checkSession.status === 'active') {
-                    const isLockLifted = checkSession.userStatus === 'submitted' || !!checkSession.isStale;
+                    const isSubmittedSession = checkSession.userStatus === 'submitted';
+                    const isLockLifted = !!checkSession.isStale;
+
+                    if (isSubmittedSession) {
+                        dispatch(initialiseCollab({
+                            roomId: null,
+                            partner: null,
+                            matchId: null,
+                            isStale: false,
+                        }));
+                        runMatchmakingSequence(abortController.signal);
+                        return;
+                    }
+
                     setHasExistingSession(true);
                     setHasUserSubmittedExisting(isLockLifted);
 
@@ -283,10 +296,8 @@ export default function WaitingRoom() {
                              </p>
                              <p className={`${hasUserSubmittedExisting ? 'text-blue-700' : 'text-orange-700'} text-sm mt-2`}>
                                 {hasUserSubmittedExisting 
-                                    ? collabValue.isStale 
-                                        ? "Your previous session has timed out (30+ mins). You can rejoin or find a new match."
-                                        : "You've submitted your code, but you can still go back to help your partner."
-                                    : "You cannot start a new match while your previous partner is still in the room. Please rejoin and submit your work."}
+                                    ? "Your previous session has timed out (30+ mins). You can rejoin or find a new match."
+                                    : "You cannot start a new match. Please rejoin and submit your work."}
                              </p>
                              {hasUserSubmittedExisting && (
                                 <div className="mt-4 flex gap-2 justify-center">
@@ -312,7 +323,7 @@ export default function WaitingRoom() {
                         {(!hasUserSubmittedExisting || !hasExistingSession) && (
                             <Button 
                                 label={hasExistingSession ? "Rejoin & Finish" : "Continue"} 
-                                onClick={handleContinueClick}
+                                onClick={hasExistingSession ? handleRejoinClick : handleContinueClick}
                                 disabled={!isMatched || partnerStatus === statusMessage.UNEXPECTED_ERROR() || partnerStatus === statusMessage.FINDING_PARTNER()}
                             />
                         )}

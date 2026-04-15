@@ -40,6 +40,10 @@ export class RoomSessionService {
     return session.users.some((user) => user.userId === userId);
   }
 
+  isActiveUserStatus(userStatus) {
+    return userStatus === USER_SESSION_STATUS.ACTIVE;
+  }
+
   isSubmittedUserStatus(userStatus) {
     return userStatus === USER_SESSION_STATUS.SUBMITTED;
   }
@@ -154,6 +158,8 @@ export class RoomSessionService {
        LIMIT 1`,
       [userId]
     );
+
+    console.log('Active session check for user:', userId, userActiveSessionRes.rows);
 
     const row = userActiveSessionRes.rows[0];
 
@@ -415,7 +421,8 @@ export class RoomSessionService {
       };
     }
 
-    if (!this.isDisconnectedUserStatus(sessionUser.userStatus)) {
+    console.log(`Current user status: ${sessionUser.userStatus}`);
+    if (!(this.isDisconnectedUserStatus(sessionUser.userStatus) || this.isActiveUserStatus(sessionUser.userStatus))) {
       return {
         success: false,
         message: 'User must be disconnected before reconnecting',
