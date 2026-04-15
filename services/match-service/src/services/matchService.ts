@@ -1,4 +1,5 @@
 
+import { match } from 'node:assert';
 import { Difficulty, Language } from '../constants/match.constant.ts'
 const levels = Object.keys(Difficulty) as (keyof typeof Difficulty)[];
 const languages = Object.values(Language);
@@ -120,6 +121,7 @@ export class MatchService {
              if (potentialPartner) {
                 try {
 
+                    const matchId = this.generateMatchId();
                     // WATCH helps to implement optimistic locking; can only successful
                     // modify the existing data, if no one else touches these data before
                     // .exec() run. if someone modified or delete the watched keys before
@@ -139,8 +141,14 @@ export class MatchService {
                         .hSet(`user:${userId}`, 'status', 'matched')
                         .zRem(getShardAddress(language, difficulty), potentialPartner)
                         .zRem(getShardAddress(partnerData.language, partnerData.difficulty), potentialPartner)
-                        .setEx(`match:result:${potentialPartner}`, 30, userId)
-                        .setEx(`match:result:${userId}`, 30, potentialPartner)
+                        .setEx(`match:result:${potentialPartner}`, 30,  JSON.stringify({
+                            partnerId: userId,
+                            matchId
+                        }))
+                        .setEx(`match:result:${userId}`, 30,  JSON.stringify({
+                            partnerId: potentialPartner,
+                            matchId
+                        }))
                         .exec();
                     // calling exec() successfully would clear all the watch key
                     // Note: the match:result here would act as the mailbox for user
@@ -152,7 +160,7 @@ export class MatchService {
                         return {status:'searching', partnerId:null}
                     }
 
-                    return {status: 'matched', partnerId: potentialPartner};
+                    return {status: 'matched', partnerId: potentialPartner, matchId: matchId}; //potential partner
                     } catch(err) {
                         await this.matchRepo.redis.unwatch()
                         throw err;
@@ -244,6 +252,9 @@ export class MatchService {
         } while (cursor != 0);
     }
 
+    generateMatchId() {
+        return `match-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    }
 
     pollMatchStatus = async (userId) => {
         try {
@@ -253,13 +264,25 @@ export class MatchService {
                 return {status: 'expired', message: 'Session times out. Please retry.'};
             }
 
-            if (matchPartnerId) {
-                return {
-                    status: 'matched',
-                    partnerId: matchPartnerId,
-                    message: 'Partner found'
-                }
-            }
+            // if (matchPartnerId) {
+            //     return {
+            //         status: 'matched',
+            //         partnerId: matchPartnerId,
+            //         message: 'Partner found'
+            //     }
+            // }
+
+    if (matchPartnerId) {
+        const parsed = JSON.parse(matchPartnerId);
+        console.log("Match Partner Id", parsed)
+
+        return {
+            status: 'matched',
+            partnerId: parsed.partnerId,
+            matchId: parsed.matchId,   // ✅ SAME matchId
+            message: 'Partner found'
+        }
+    }
 
 
 
@@ -270,7 +293,7 @@ export class MatchService {
 
             return {status: userData.status, userId: userId};
         } catch (error) {
-            console.error("Poll error:", err);
+            console.error("Poll error:", error);
             return {status: 'error'};
         }
     }

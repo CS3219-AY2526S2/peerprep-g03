@@ -6,7 +6,10 @@ CREATE TABLE questions (
     difficulty VARCHAR(50) NOT NULL,
     topic_tags TEXT[], 
     is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    locked_by VARCHAR(255) DEFAULT NULL,
+    locked_at TIMESTAMP DEFAULT NULL
 );
 
 -- 2. Create the Language Templates table (New)
@@ -18,3 +21,4 @@ CREATE TABLE question_templates (
     solution_code TEXT,            -- The reference solution
     UNIQUE(question_id, language)  -- Prevents duplicate Python entries for one question
 );
+

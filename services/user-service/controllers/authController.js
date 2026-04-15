@@ -75,7 +75,7 @@ exports.loginUser = async (req, res) => {
       [user.id]
     );
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: "15m" });
     // give to frontend token + userid, username and role
     res.json({
       username: user.username,
@@ -117,7 +117,7 @@ exports.refreshToken = async (req, res) => {
 
     // 4. Create NEW token with UPDATED role
     const newToken = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "15m" }
     );

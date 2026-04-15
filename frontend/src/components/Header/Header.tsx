@@ -12,7 +12,7 @@ export function Header({displayUserNavigation = false}: HeaderProps) {
     const navigate = useNavigate();
     const { value, status } = useSelector((state) => state.authentication);
     const username: string = value.username
-    const isAdmin: boolean = value.role == "Admin"
+    const isAdmin: boolean = value.role == "Admin" || value.role == "SuperAdmin"
     const logOut: boolean = value.username == ""
     const handleViewClick = () => {
         navigate(`/profile`);
