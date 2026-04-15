@@ -107,7 +107,10 @@ SELECT * FROM sessions;
 SELECT * FROM session_users;
 SELECT * FROM submissions;
 ```
-
+To seed questions: 
+```bash
+docker exec -it question-service node scripts/seedQuestions.mjs
+```
 ---
 
 ## 🧩 Services Breakdown
