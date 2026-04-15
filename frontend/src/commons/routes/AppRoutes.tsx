@@ -44,7 +44,7 @@ export function AppRoutes () {
                     <Route path = "/attempt/view/:attemptId" element = {<AttemptInformation/> } />
                     <Route path = "/start" element = {<QuestionSetting/> } />
                     <Route path = "/waiting-room" element = {<WaitingRoom/> } />
-                    <Route path="/collaboration" element={<Collaboration />} />
+                    <Route path = "/collaboration" element={<Collaboration />} />
                 </Route>
 
                 <Route path = "*" element = {<PageNotFound /> }/>

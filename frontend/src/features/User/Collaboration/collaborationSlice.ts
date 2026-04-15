@@ -11,7 +11,10 @@ const initialStateValue = {
     programmingLanguage: null,
     question: null,
     partner: null,
+    matchId: null,
+    roomId: null,
     solution: null,
+    isReconnecting: false,
 }
 
 export const fetchPartner = createAsyncThunk(
@@ -39,21 +42,36 @@ const handleFulfilled = (state, action) => {
     state.value = { ...state.value, ...action.payload };
 };
 
+
+
 const collaborationSlice = createSlice({
     name: 'collaboration',
     initialState: { value: initialStateValue, stateStatus :'idle'},
     reducers: {
-        initialise: (state, action) => {
+        initialiseCollab: (state, action) => {
             state.value = {
                 ...state.value,
                 ...action.payload
             };
+            if (action.payload.roomId) {
+                state.stateStatus = 'succeeded';
+            }
         },
+        
+
         setPartner: (state, action) => {
             state.value.partner = action.payload;
             state.stateStatus = 'succeeded';
         },
+        setMatchId: (state, action) => {
+            state.value.matchId = action.payload;
+            state.stateStatus = 'succeeded';
+        },
 
+        setRoomId: (state, action) => {
+            state.value.roomId = action.payload;
+            state.stateStatus = 'succeeded'; // what is status for?
+        },
         reset: (state) => {
             state.value = initialStateValue;
             state.stateStatus = 'idle'},
@@ -71,5 +89,5 @@ const collaborationSlice = createSlice({
     }
 });
 
-export const { initialise, reset, resetStatus, setPartner } = collaborationSlice.actions;
+export const { initialiseCollab, reset, resetStatus, setPartner, setMatchId, setRoomId } = collaborationSlice.actions;
 export default collaborationSlice.reducer;

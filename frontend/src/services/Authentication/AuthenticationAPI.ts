@@ -65,7 +65,6 @@ export async function createUserProfile(username: string, password: string, emai
     }
 }
 
-
 export async function updateProficiency(username: string, proficiency: string){
       await new Promise((resolve) => setTimeout(resolve, 500));
       return {status: "200"};

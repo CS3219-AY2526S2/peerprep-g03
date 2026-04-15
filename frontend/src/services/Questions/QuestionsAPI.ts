@@ -3,7 +3,14 @@ import axios from 'axios';
 const API_URL = 'http://localhost:3001/api/questions';
 
 export async function getQuestionDetail(questionId: string){
-    const response = await axios.get(`${API_URL}/${questionId}`);
+    const token = localStorage.getItem('JWToken'); 
+    console.log("Token being sent for fetch:", token ? "YES" : "NO TOKEN");
+    const response = await axios.get(`${API_URL}/${questionId}`, {
+        headers: { 
+            // Send token so backend can identify the admin and set the lock
+            'Authorization': token ? `Bearer ${token}` : '' 
+        }
+    });
     return response.data;
 }
 
@@ -80,12 +87,28 @@ export async function updateQuestion({ id, title, topic, difficulty, description
     );
     return response.data;
 }
-export async function getQuestions(username:string){
-    
-    const response = await axios.get(`${API_URL}/`);
+export async function releaseQuestionLock(questionId: string) {
+    const token = localStorage.getItem('JWToken');
+    if (!token) return;
+
+    const response = await axios.post(`${API_URL}/${questionId}/unlock`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.data;
+}
+export async function getQuestions(username: string, page: number = 1, limit: number = 10) {
+    // Send page and limit as query parameters: ?page=1&limit=10
+    const response = await axios.get(`${API_URL}/`, {
+        params: {
+            page: page,
+            limit: limit
+        }
+    });
+
     return {
         status: "200 OK",
-        data: { questions: response.data }
+        // Return the full data object containing { questions, totalCount, totalPages, currentPage }
+        data: response.data 
     };
 }
 

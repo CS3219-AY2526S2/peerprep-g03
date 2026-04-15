@@ -6,6 +6,8 @@ export function ProtectedRoutes({ allowedRoles }) {
     const isLoggedIn:boolean = value.username != ""
     const role = value.role
 
+    console.log('ProtectedRoutes auth value:', value)
+
     if (!isLoggedIn) {
         return <Navigate to="/" replace />;
     }
@@ -13,6 +15,7 @@ export function ProtectedRoutes({ allowedRoles }) {
     if (allowedRoles && !allowedRoles.includes(role)) {
         return <Navigate to="/unauthorised" replace />;
     }
+
 
     return <Outlet />;
 };
