@@ -31,6 +31,16 @@ export class RoomSessionController {
     }
   };
 
+  getRejoinableSession = async (req, res) => {
+    try {
+      const { userId } = req.body;
+      const result = await this.roomSessionService.findRejoinableRoomForUser(userId);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   reconnectSession = async (req, res) => {
     try {
       const { userId, roomId } = req.body;
