@@ -62,11 +62,13 @@ export default function QuestionSetting() {
 
       dispatch(
         initialiseCollab({
-          questionTopic: formData.questionTopic,
-          questionDifficulty: formData.questionDifficulty,
-          programmingLanguage: formData.programmingLanguage,
+          questionTopic: formData.questionTopic, // maybe dont need
+          questionDifficulty: formData.questionDifficulty, // maybe dont need
+          programmingLanguage: formData.programmingLanguage, 
+          // get question id
           questionTitle: questionData.title,
-          question: questionData.description,
+          question: questionData.description, // get question description
+          // get starter code
         })
       );
 
@@ -178,6 +180,7 @@ export default function QuestionSetting() {
         const matchId = generateSoloId();
         const session = await startRoomSession(username, matchId);
 
+        // maybe dont need dispatch again
         dispatch(
           initialiseCollab({
             questionTopic: formData.questionTopic,
@@ -192,6 +195,7 @@ export default function QuestionSetting() {
           })
         );
 
+        // store question id, question title, question description
         localStorage.setItem(
           'collabSession',
           JSON.stringify({

@@ -96,6 +96,7 @@ export async function getRejoinableRoomSession(userId: string) {
   return handleJsonResponse<GetRejoinableRoomSessionResponse>(response);
 }
 
+// pass questionid too
 export async function startRoomSession(userId: string, matchId: string) {
   const response = await fetch(`${ROOM_SESSION_BASE_URL}/start`, {
     method: 'POST',

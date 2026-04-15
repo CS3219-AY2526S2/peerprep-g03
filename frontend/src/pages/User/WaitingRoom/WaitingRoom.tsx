@@ -229,6 +229,7 @@ export default function WaitingRoom() {
         })
       );
 
+      // store question id, question title, question description
       localStorage.setItem(
         'collabSession',
         JSON.stringify({

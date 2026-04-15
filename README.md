@@ -41,5 +41,7 @@ SELECT * FROM sessions;
 SELECT * FROM session_users;
 SELECT * FROM submissions;
 ``` 
-
+``` bash
+docker compose logs -f collab-service-websocket
+``` 
 Testing rejoin

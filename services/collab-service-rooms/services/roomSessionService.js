@@ -181,6 +181,7 @@ export class RoomSessionService {
     return activeSessionRes.rows[0]?.room_id || null;
   }
 
+  // use questionid
   async startSession({ userId, matchId }) {
     if (!userId || !matchId) {
       throw new Error('userId and matchId are required');
@@ -268,6 +269,7 @@ export class RoomSessionService {
 
     const roomId = this.generateRoomId();
 
+    // use real question id
     const session = {
       roomId,
       matchId,

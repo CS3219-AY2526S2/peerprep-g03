@@ -32,6 +32,7 @@ export function Code() {
     value: authValue,
   } = useSelector((state: any) => state.authentication);
 
+  // retrieve question id, question title, question description, starter code from collab state
   const partner = collabValue.partner ?? '';
   const roomId = collabValue.roomId ?? 'private-room';
   const question = collabValue.question ?? '';
@@ -121,6 +122,7 @@ export function Code() {
     bindingRef.current?.destroy();
     bindingRef.current = null;
 
+    providerRef.current?.awareness.setLocalStateField('selection', null);
     providerRef.current?.destroy();
     providerRef.current = null;
 
@@ -200,10 +202,21 @@ export function Code() {
 
     if (!hasInitializedRef.current) {
       const ydoc = new Y.Doc();
+      // const provider = new CustomYjsWsProvider({
+      //   url: 'ws://localhost:3004',
+      //   roomId,
+      //   ydoc,
+      // });
       const provider = new CustomYjsWsProvider({
         url: 'ws://localhost:3004',
         roomId,
         ydoc,
+        token: authValue.JWToken,
+        username,
+      });
+
+      provider.onStatus((status) => {
+        console.log(`WebSocket status: ${status}, room: ${roomId}`);
       });
 
       const yText = ydoc.getText('monaco');
@@ -225,7 +238,8 @@ export function Code() {
     bindingRef.current = new MonacoBinding(
       yTextRef.current!,
       currentModel,
-      new Set([editor])
+      new Set([editor]),
+      providerRef.current!.awareness
     );
 
     editor.onMouseUp(() => {
@@ -252,6 +266,57 @@ export function Code() {
           });
         }
       }
+    });
+
+  //   const updateCursor = () => {
+  //     const selection = editor.getSelection();
+
+  //     if (!selection) {
+  //       providerRef.current?.updateLocalCursor(null);
+  //       return;
+  //     }
+
+  //     providerRef.current?.updateLocalCursor({
+  //       anchorLine: selection.startLineNumber,
+  //       anchorColumn: selection.startColumn,
+  //       headLine: selection.endLineNumber,
+  //       headColumn: selection.endColumn,
+  //     });
+  //   };
+
+  //   editor.onDidChangeCursorSelection(() => {
+  //     updateCursor();
+  //   });
+
+  //   // initialize once
+  //   updateCursor();
+
+    let isUpdatingSelection = false;
+
+    editor.onDidChangeCursorSelection(() => {
+      if (isUpdatingSelection) return;
+
+      const selection = editor.getSelection();
+      if (!selection) return;
+
+      isUpdatingSelection = true;
+
+      providerRef.current?.awareness.setLocalStateField('selection', {
+        start: {
+          lineNumber: selection.startLineNumber,
+          column: selection.startColumn,
+        },
+        end: {
+          lineNumber: selection.endLineNumber,
+          column: selection.endColumn,
+        },
+      });
+
+      queueMicrotask(() => {
+        isUpdatingSelection = false;
+      });
+
+      
     });
   };
 
