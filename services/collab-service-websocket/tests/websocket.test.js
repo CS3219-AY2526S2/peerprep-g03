@@ -6,6 +6,7 @@ import { createCollabApp } from '../src/server.js';
 
 jest.setTimeout(10000);
 
+// Reuse small helpers for socket events in each test.
 function waitForOpen(ws) {
   return new Promise((resolve, reject) => {
     const onOpen = () => {
@@ -138,6 +139,7 @@ async function joinRoom(ws, { roomId, username, token }) {
   return { syncMsg, joinedMsg };
 }
 
+// Start a fresh websocket app for every test.
 describe('collab websocket server', () => {
   let app;
   let pool;

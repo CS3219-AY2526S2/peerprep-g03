@@ -9,6 +9,7 @@ import {
   Topic,
 } from '../constants/match.constant';
 
+// Middleware tests validate request input.
 describe('Match middleware', () => {
   let req: any;
   let res: any;

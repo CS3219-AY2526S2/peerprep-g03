@@ -1,5 +1,6 @@
 process.env.JWT_SECRET = 'testsecret';
 
+// Mock controller dependencies.
 jest.mock('../models/userModel', () => ({
   createUser: jest.fn(),
   getUserByUsername: jest.fn(),
@@ -41,6 +42,7 @@ const { Pool } = require('pg');
 
 const userController = require('../controllers/authController');
 
+// Cover register, login, and token refresh flows.
 describe('User Controller', () => {
   let req;
   let res;

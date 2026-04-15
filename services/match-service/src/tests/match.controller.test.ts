@@ -1,4 +1,4 @@
-// tests findMatch, getMatchStatus, exitTab, cancelMatch
+// Controller tests cover the main match endpoints.
 
 import * as httpMocks from 'node-mocks-http';
 import { MatchController } from '../controllers/matchController';

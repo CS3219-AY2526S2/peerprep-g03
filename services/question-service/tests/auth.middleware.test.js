@@ -4,6 +4,7 @@ const httpMocks = require('node-mocks-http');
 
 jest.mock('jsonwebtoken');
 
+// Middleware tests use mocked JWT responses.
 describe('verifyAdmin middleware', () => {
   let req, res, next;
 

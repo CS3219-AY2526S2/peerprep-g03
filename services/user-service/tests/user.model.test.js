@@ -1,3 +1,4 @@
+// Model tests run with a mocked pg pool.
 const mockQuery = jest.fn();
 
 jest.mock('pg', () => ({

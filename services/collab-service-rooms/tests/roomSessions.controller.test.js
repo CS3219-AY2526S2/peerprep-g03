@@ -2,6 +2,7 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import * as httpMocks from 'node-mocks-http';
 import { RoomSessionController } from '../controllers/roomSessionController.js';
 
+// Controller tests to substitute the service layer.
 describe('RoomSessionController', () => {
   let req;
   let res;
