@@ -158,7 +158,7 @@ export function Code() {
       const questionId: string = collabValue.questionId;
       const partnerName: string = collabValue.partner;
       const username: string = authValue.username;
-       console.log(collabValue)
+    //   console.log(collabValue)
     //   console.log(questionId, "desc" ,questionDescription, "title" ,questionTitle);
 
       try {
