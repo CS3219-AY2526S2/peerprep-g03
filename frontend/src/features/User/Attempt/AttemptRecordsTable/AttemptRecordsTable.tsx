@@ -57,14 +57,11 @@ export function AttemptRecordsTable() {
                 // map backend → frontend format
                 const mapped: AllAttemptRecord[] = data.map((r: any) => ({
                     id: r.id,
-                    username: `user${r.user1_id}`, // temp
+                    username: r.user1_id === userId ? r.user1_username : r.user2_username,
                     questionTitle: r.question_text,
                     questionTopic: r.question_topic,
                     questionDifficulty: r.difficulty,
-                    collaborator:
-                        r.user1_id === userId
-                            ? `user${r.user2_id}`
-                            : `user${r.user1_id}`,
+                    collaborator: r.user1_id === userId ? r.user2_username : r.user1_username,
                 }));
 
                 setRows(mapped);

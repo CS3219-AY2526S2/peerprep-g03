@@ -60,7 +60,7 @@ export default function SignIn() {
         else {
             navigate('/start');
         }
-        const data = await response.json();
+        const data = await response;
 
         // DEBUG LOGGING
         console.log("Raw fetch response:", response);

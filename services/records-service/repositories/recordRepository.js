@@ -3,18 +3,19 @@ import { pool } from "../db/db.js";
 export const createRecord = async (record) => {
   const query = `
     INSERT INTO records 
-    (user1_id, user2_id, question_text, submitted_code, suggested_solution, is_correct, programming_language, question_topic, difficulty)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (user1_id, user2_id, user1_username, user2_username, question_text, submitted_code, suggested_solution, programming_language, question_topic, difficulty)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *;
   `;
 
   const values = [
     record.user1_id,
     record.user2_id,
+    record.user1_username,
+    record.user2_username,
     record.question_text,
     record.submitted_code,
     record.suggested_solution,
-    record.is_correct,
     record.programming_language,
     record.question_topic,
     record.difficulty,

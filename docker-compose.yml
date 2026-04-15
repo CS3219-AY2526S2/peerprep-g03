@@ -228,6 +228,7 @@ services:
       - question-service
       - collab-service-rooms
       - match-service
+      - records-service
       - collab-service-websocket
       - ai-service
     environment:
@@ -235,7 +236,8 @@ services:
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
       VITE_COLLAB_SERVICE_ROOMS_URL: http://collab-service-rooms:3002
       VITE_MATCH_SERVICE_URL: http://match-service:3003
-      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3004
+      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3012
+      VITE_RECORDS_SERVICE_WEBSOCKET_URL: http://records-service:3004
       VITE_AI_SERVICE_URL: http://ai-service:3006
     ports:
       - "5173:5173"

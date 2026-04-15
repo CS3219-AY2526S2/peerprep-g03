@@ -84,11 +84,33 @@ async function updateUserRole(id, role) {
   return res.rows[0];
 }
 
+async function getUsersByIds(ids) {
+  if (!ids || ids.length === 0) return [];
+  const res = await pool.query(
+    `SELECT id, username FROM users WHERE id = ANY($1)`,
+    [ids]
+  );
+  return res.rows;
+}
+
+async function getUsersByUsernames(usernames) {
+  if (!usernames || usernames.length === 0) return [];
+
+  const res = await pool.query(
+    `SELECT id, username FROM users WHERE LOWER(username) = ANY($1)`,
+    [usernames.map(u => u.toLowerCase())]
+  );
+
+  return res.rows;
+}
+
 module.exports = { 
   createUser, 
   getUserByUsername, 
   decryptEmail, 
   getUserById,
   getAllUsers,
-  updateUserRole
+  updateUserRole,
+  getUsersByIds,
+  getUsersByUsernames
 };

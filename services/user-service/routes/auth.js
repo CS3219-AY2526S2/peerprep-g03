@@ -7,5 +7,7 @@ router.post("/login", authController.loginUser);
 router.post("/refresh", authController.refreshToken);
 router.get("/users", authController.getAllUsers);
 router.patch("/users/:id/role", authController.updateUserRole);
+router.get("/batch", authController.getUsersBatch);
+router.get("/usernames", authController.getUsersByUsernamesController);
 
 module.exports = router;

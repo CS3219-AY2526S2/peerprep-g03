@@ -97,16 +97,16 @@ export function Code() {
         };
     };
 
-    // remove and change to the bottom one if needed
-    const handleSubmitClick = async() => {
-        const question: string = collabValue.question
-        const partner: string = collabValue.partner
-        const timestamp = new Date().toISOString();
-        const username: string = authValue.username
-        await postAttempt(timestamp, username, partner, question, "Sample code")
-        dispatch(reset())
-        navigate('/start');
-    };
+    // // remove and change to the bottom one if needed
+    // const handleSubmitClick = async() => {
+    //     const question: string = collabValue.question
+    //     const partner: string = collabValue.partner
+    //     const timestamp = new Date().toISOString();
+    //     const username: string = authValue.username
+    //     await postAttempt(timestamp, username, partner, question, "Sample code")
+    //     dispatch(reset())
+    //     navigate('/start');
+    // };
 
     // === changed to test records service ===
     // const handleSubmitClick = () => {
@@ -190,29 +190,29 @@ export function Code() {
     }
   
 
-const handleQuitClick = async () => {
-    try {
-        // Only trigger the disconnect service if it's a real room session
-        if (roomId && roomId !== 'private-room' && username) {
-            console.log(`User ${username} is disconnecting from room ${roomId}`);
-            await disconnectRoomSession(username, roomId);
+    const handleQuitClick = async () => {
+        try {
+            // Only trigger the disconnect service if it's a real room session
+            if (roomId && roomId !== 'private-room' && username) {
+                console.log(`User ${username} is disconnecting from room ${roomId}`);
+                await disconnectRoomSession(username, roomId);
+            }
+        } catch (err) {
+            console.error('Failed to disconnect room session:', err);
+        } finally {
+            // ALWAYS clean up resources and redirect, even if the API call fails
+            cleanupCollabResources();
+            dispatch(reset()); // Clears partner info, roomId, etc. in Redux
+            navigate('/start');
         }
-    } catch (err) {
-        console.error('Failed to disconnect room session:', err);
-    } finally {
-        // ALWAYS clean up resources and redirect, even if the API call fails
-        cleanupCollabResources();
-        dispatch(reset()); // Clears partner info, roomId, etc. in Redux
-        navigate('/start');
-    }
-};
+    };
 
     const handleSubmitClick = async () => {
-      const timestamp = new Date().toISOString()
+      //const timestamp = new Date().toISOString()
       const sharedDocument = getSharedDocument()
       
       // is this needed?
-      const question: string = collabValue.question;
+      const questionId: string = collabValue.questionid;
       const partnerName: string = collabValue.partner;
       const username: string = authValue.username;
 
@@ -220,7 +220,35 @@ const handleQuitClick = async () => {
         if (roomId && roomId !== 'private-room') {
           await submitRoomSession(username, roomId, sharedDocument)
         }
-        await postAttempt(timestamp, username, partner, question, sharedDocument) // via teammates's code
+
+        // // 1. GET question details
+        // const res = await fetch(`http://localhost:3003/api/questions/${questionId}`, {
+        // headers: {
+        //     Authorization: `Bearer ${authValue.token}`
+        // }
+        // });
+
+        // const question = await res.json();
+
+        // const template = question.templates?.[0];
+        
+        await fetch("http://localhost:3004/api/records", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user1_username: username.toLowerCase(),
+                user2_username: partnerName.toLowerCase(),
+                question_text: question,
+                submitted_code: sharedDocument,
+
+                // FROM QUESTION SERVICE
+                suggested_solution: "template?.solution_code || ",
+                programming_language: "template?.language || ",
+                question_topic: "question.topic_tags?.[0] || ",
+                difficulty: "question.difficulty"
+            }),
+        });
+
       } catch (err) {
         console.error('Failed to submit session', err)
       } finally {
@@ -252,7 +280,7 @@ const handleQuitClick = async () => {
       // Create Yjs objects once for this mounted page
       if (!hasInitializedRef.current) {
         const ydoc = new Y.Doc()
-        const provider = new WebsocketProvider('ws://localhost:3004', roomId, ydoc)
+        const provider = new WebsocketProvider('ws://localhost:3012', roomId, ydoc)
         const yText = ydoc.getText('monaco')
 
         provider.on('status', (event: { status: string }) => {

@@ -3,13 +3,8 @@ import { createRecordController, getRecordsController, getRecord } from "../cont
 
 const router = express.Router();
 
-// router.post("/", controller.createRecord);
-// router.get("/", controller.getUserRecords);   // ?user_id=XXX
-// router.get("/:id", controller.getRecord);
-// router.post("/bulk", controller.createBulkRecords);
 router.post("/records", createRecordController)
 router.get("/records", getRecordsController)
 router.get('/records/:id', getRecord);
-
 
 export default router;

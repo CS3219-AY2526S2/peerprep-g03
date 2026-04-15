@@ -1,4 +1,4 @@
-const { createUser, getUserByUsername, getUserById } = require("../models/userModel");
+const { createUser, getUserByUsername, getUserById, getUsersByIds, getUsersByUsernames } = require("../models/userModel");
 const { validateEmail, validatePassword, validateUsername } = require("../utils/validation");
 const { decryptEmail } = require("../models/userModel");
 // for superadmin to get all users and update roles
@@ -182,6 +182,37 @@ exports.updateUserRole = async (req, res) => {
     const updatedUser = await updateUserRole(id, role);
 
     res.json(updatedUser);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getUsersBatch = async (req, res) => {
+  try {
+    const idsParam = req.query.ids; // ?ids=1,2,3
+    if (!idsParam) return res.status(400).json({ error: "No ids provided" });
+
+    const ids = idsParam.split(",").map(Number);
+    const users = await getUsersByIds(ids);
+
+    res.json(users); // returns [{id, username}, ...]
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getUsersByUsernamesController = async (req, res) => {
+  try {
+    const usernamesParam = req.query.usernames; // ?usernames=a,b
+    if (!usernamesParam) {
+      return res.status(400).json({ error: "No usernames provided" });
+    }
+
+    const usernames = usernamesParam.split(",");
+    const users = await getUsersByUsernames(usernames);
+
+    res.json(users); // [{id, username}]
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
