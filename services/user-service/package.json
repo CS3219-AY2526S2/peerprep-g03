@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +19,9 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.19.0",
     "zxcvbn": "^4.4.2"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "node-mocks-http": "^1.17.2"
   }
 }
