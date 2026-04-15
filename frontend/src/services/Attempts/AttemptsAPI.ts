@@ -16,6 +16,24 @@ export async function getAllAttempts(username: string){
       return {attempts: mockAttemptRecordTableValue};
 }
 
+export async function postAttempt(timestamp, user1, user2, questionTitle, solution){
+    const users = user2 ? [user1, user2] : [user1];
+
+    const res = await fetch("http://localhost:3004/records/bulk", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            users,
+            question_id: questionTitle,
+            submitted_code: solution,
+            result: { status: "unknown" }
+        })
+    });
+
+    return res.json();
+}
 // export async function postAttempt(timestamp, user1, user2, questionTitle, solution){
 //     await new Promise((resolve) => setTimeout(resolve, 500));
 //     return {status:200};

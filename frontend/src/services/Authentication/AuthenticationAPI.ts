@@ -21,6 +21,7 @@ export async function getUserProfile(username: string, password: string) {
 
         return {
             status: response.status.toString(),
+            id: data.id,
             username: data.username,
             role: data.role,
             email: data.email,

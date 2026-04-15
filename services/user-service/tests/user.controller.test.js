@@ -219,6 +219,7 @@ describe('User Controller', () => {
         email: 'j123456@j.com',
         proficiency: 'Intermediate',
         JWToken: 'token-123',
+        id: 1,
       });
     });
   });
