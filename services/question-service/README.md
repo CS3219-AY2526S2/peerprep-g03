@@ -1,4 +1,4 @@
-````md
+
 # Question Service
 
 Manages the question bank for PeerPrep.
@@ -27,7 +27,7 @@ This service handles **CRUD operations**, **random question retrieval**, and **t
 npm install
 cp .env.example .env
 npm run dev
-````
+```
 
 ---
 

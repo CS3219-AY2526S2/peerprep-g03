@@ -1,4 +1,4 @@
-````md
+
 # AI Service
 
 AI-powered explanation service for PeerPrep.
@@ -37,7 +37,7 @@ This service provides **real-time streamed explanations** using Google Gemini vi
 npm install
 cp .env.example .env
 npm run dev
-````
+```
 
 ---
 
