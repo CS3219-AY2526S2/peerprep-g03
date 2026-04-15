@@ -7,6 +7,7 @@ export function createRoomSessionRoutes(roomSessionController) {
   const router = express.Router();
 
   router.post('/start', roomSessionController.startSession);
+  router.post('/rejoinable', roomSessionController.getRejoinableSession);
   router.post('/reconnect', roomSessionController.reconnectSession);
   router.post('/disconnect', roomSessionController.disconnectSession);
   router.post('/leave', roomSessionController.leaveSession);
