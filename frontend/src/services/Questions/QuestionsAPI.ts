@@ -14,6 +14,11 @@ export async function getQuestionDetail(questionId: string){
     return response.data;
 }
 
+export async function getQuestionDetailUser(questionId: string){
+    const response = await axios.get(`${API_URL}/user/${questionId}`);
+    return response.data;
+}
+
 export async function getQuestion(questionTitle: string){
     const response = await axios.get(`${API_URL}/title/${questionTitle}`);
     return response.data;
