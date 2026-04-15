@@ -50,7 +50,7 @@ async function createUser(username, password, email, role = "User") {
     [usernameLower, hashedPassword, encryptedEmail, role]
   );
 
-  console.log(usernameLower, hashedPassword, encryptedEmail, role)
+  // console.log(usernameLower, hashedPassword, encryptedEmail, role)
   return res.rows[0];
 }
 
