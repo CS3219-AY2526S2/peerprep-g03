@@ -255,7 +255,14 @@ async function findRandom(topic, difficulty, language) {
     [topic, difficulty, language]
   );
   
-  return res.rows[0];
+  //return res.rows[0];
+  const row = res.rows[0];
+  if (!row) return null;
+
+  return {
+    ...row,
+    starterCode: row.active_template?.starter_code ?? 'Missing Starter Code',
+  };
 }
 async function getAllTopicRelations() {
     const query = `

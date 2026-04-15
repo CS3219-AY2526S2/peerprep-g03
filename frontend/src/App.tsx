@@ -43,7 +43,10 @@ function App() {
               initialiseCollab({
                 roomId: parsed.roomId ?? null,
                 partner: parsed.partner ?? null,
-                question: parsed.question ?? null,
+                questionId: parsed.questionId ?? null,
+                questionTitle: parsed.questionTitle ?? null,
+                questionDescription: parsed.questionDescription ?? null,
+                questionStarterCode: parsed.questionStarterCode ?? null,
               })
             )
           }

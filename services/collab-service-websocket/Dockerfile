@@ -8,4 +8,4 @@ EXPOSE 3012
 
 ENV HOST=0.0.0.0
 ENV PORT=3012
-CMD ["npx", "y-websocket"]
+CMD ["npm", "start"]

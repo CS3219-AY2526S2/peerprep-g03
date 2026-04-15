@@ -4,13 +4,14 @@ import { Button } from '../../../../components';
 import { darkBlue } from '../../../../commons';
 import { useSelector, useDispatch } from 'react-redux';
 import { reset } from '../../../../features/User/Collaboration/collaborationSlice';
-import { postAttempt } from '../../../../services/Attempts';
+//import { postAttempt } from '../../../../services/Attempts';
 import { useCompletion } from '@ai-sdk/react';
 
 import Editor, { OnMount } from '@monaco-editor/react';
 import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
 import { WebsocketProvider } from 'y-websocket';
+import { CustomYjsWsProvider } from '../../../../services/Collaboration/customYjsWs';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 
 import {
@@ -31,9 +32,14 @@ export function Code() {
     value: authValue,
   } = useSelector((state: any) => state.authentication);
 
+  // retrieve question id, question title, question description, starter code from collab state
   const partner = collabValue.partner ?? '';
   const roomId = collabValue.roomId ?? 'private-room';
-  const question = collabValue.question ?? '';
+  const questionId = collabValue.questionId ?? '';
+  const questionTitle = collabValue.questionTitle ?? '';
+  const questionDescription = collabValue.questionDescription ?? '';
+  const programmingLanguage = collabValue.programmingLanguage ?? '';
+  const questionStarterCode = collabValue.questionStarterCode ?? '';
   const username = authValue.username ?? '';
 
   const havePartner = !!partner;
@@ -43,7 +49,8 @@ export function Code() {
 
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const bindingRef = useRef<MonacoBinding | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  //const providerRef = useRef<WebsocketProvider | null>(null);
+  const providerRef = useRef<CustomYjsWsProvider | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const hasInitializedRef = useRef(false);
@@ -127,7 +134,7 @@ export function Code() {
 
         yTextRef.current = null;
         hasInitializedRef.current = false;
-    }
+    };
 
     const handleQuitClick = async () => {
         try {
@@ -173,7 +180,7 @@ export function Code() {
             body: JSON.stringify({
                 user1_username: username.toLowerCase(),
                 user2_username: partnerName.toLowerCase(),
-                question_text: question,
+                question_text: questionId,
                 submitted_code: sharedDocument,
 
                 // FROM QUESTION SERVICE (MOCKED DATA)
@@ -184,45 +191,77 @@ export function Code() {
             }),
         });
 
-      } catch (err) {
-        console.error('Failed to submit session', err)
-      } finally {
-        cleanupCollabResources()
-        dispatch(reset())
-        navigate('/start')
+        } catch (err) {
+            console.error('Failed to submit session', err)
+        } finally {
+            cleanupCollabResources()
+            dispatch(reset())
+            localStorage.removeItem('collabSession');
+            navigate('/start')
+        }
 
-        // Destroy Yjs connections and bindings immediately to prevent further edits after submission
-        // Delete room
-        // Remove redux dispatch(reset());
-        // Save attempt to collab database with status 'submitted'
+            // Destroy Yjs connections and bindings immediately to prevent further edits after submission
+            // Delete room
+            // Remove redux dispatch(reset());
+            // Save attempt to collab database with status 'submitted'
 
-        // Auto exit partner's room too?
-        // where is the post attempt
+            // Auto exit partner's room too?
+            // where is the post attempt
 
-      }
-    };
+        };
 
-  const handleEditorDidMount: OnMount = (editor) => {
-    editorRef.current = editor;
+    const handleEditorDidMount: OnMount = (editor) => {
+        editorRef.current = editor;
 
-    const currentModel = editor.getModel();
-    if (!currentModel) {
-      console.error('Monaco model is missing');
-      return;
-    }
+        const currentModel = editor.getModel();
+        if (!currentModel) {
+        console.error('Monaco model is missing');
+        return;
+        }
+
+    // if (!hasInitializedRef.current) {
+    //   const ydoc = new Y.Doc();
+    //   const provider = new WebsocketProvider('ws://localhost:3012', roomId, ydoc);
+    //   const yText = ydoc.getText('monaco');
+
+    //   provider.on('status', (event: { status: string }) => {
+    //     console.log(`WebSocket status: ${event.status}, room: ${roomId}`);
+    //   });
+
+    //   provider.on('connection-error', (err: unknown) => {
+    //     console.error('WebSocket connection error:', err);
+    //   });
+
+    //   ydocRef.current = ydoc;
+    //   providerRef.current = provider;
+    //   yTextRef.current = yText;
+    //   hasInitializedRef.current = true;
+    // }
 
     if (!hasInitializedRef.current) {
       const ydoc = new Y.Doc();
-      const provider = new WebsocketProvider('ws://localhost:3012', roomId, ydoc);
+      // const provider = new CustomYjsWsProvider({
+      //   url: 'ws://localhost:3012',
+      //   roomId,
+      //   ydoc,
+      // });
+      const provider = new CustomYjsWsProvider({
+        url: 'ws://localhost:3012',
+        roomId,
+        ydoc,
+        token: authValue.JWToken,
+        username,
+      });
+
+      provider.onStatus((status) => {
+        console.log(`WebSocket status: ${status}, room: ${roomId}`);
+      });
+
       const yText = ydoc.getText('monaco');
-
-      provider.on('status', (event: { status: string }) => {
-        console.log(`WebSocket status: ${event.status}, room: ${roomId}`);
-      });
-
-      provider.on('connection-error', (err: unknown) => {
-        console.error('WebSocket connection error:', err);
-      });
+      // Only set starter code if document is empty
+      // if (yText.length === 0 && questionStarterCode?.trim().length > 0) {
+      //   yText.insert(0, questionStarterCode);
+      // }
 
       ydocRef.current = ydoc;
       providerRef.current = provider;
@@ -232,6 +271,12 @@ export function Code() {
 
     bindingRef.current?.destroy();
 
+    // bindingRef.current = new MonacoBinding(
+    //   yTextRef.current!,
+    //   currentModel,
+    //   new Set([editor]),
+    //   providerRef.current!.awareness
+    // );
     bindingRef.current = new MonacoBinding(
       yTextRef.current!,
       currentModel,
@@ -264,6 +309,79 @@ export function Code() {
         }
       }
     });
+
+  //   const updateCursor = () => {
+  //     const selection = editor.getSelection();
+
+  //     if (!selection) {
+  //       providerRef.current?.updateLocalCursor(null);
+  //       return;
+  //     }
+
+  //     providerRef.current?.updateLocalCursor({
+  //       anchorLine: selection.startLineNumber,
+  //       anchorColumn: selection.startColumn,
+  //       headLine: selection.endLineNumber,
+  //       headColumn: selection.endColumn,
+  //     });
+  //   };
+
+  //   editor.onDidChangeCursorSelection(() => {
+  //     updateCursor();
+  //   });
+
+  //   // initialize once
+  //   updateCursor();
+
+    let isUpdatingSelection = false;
+
+    editor.onDidChangeCursorSelection(() => {
+      if (isUpdatingSelection) return;
+
+      const selection = editor.getSelection();
+      if (!selection) return;
+
+      isUpdatingSelection = true;
+
+      providerRef.current?.awareness.setLocalStateField('selection', {
+        start: {
+          lineNumber: selection.startLineNumber,
+          column: selection.startColumn,
+        },
+        end: {
+          lineNumber: selection.endLineNumber,
+          column: selection.endColumn,
+        },
+      });
+
+      queueMicrotask(() => {
+        isUpdatingSelection = false;
+      });
+
+      
+    });
+  };
+
+  const mapLanguage = (lang: string) => {
+    switch (lang?.toLowerCase()) {
+      case 'python':
+        return 'python';
+      case 'java':
+        return 'java';
+      case 'c++':
+      case 'cpp':
+        return 'cpp';
+      case 'c':
+        return 'c';
+      case 'javascript':
+      case 'js':
+        return 'javascript';
+      case 'typescript':
+      case 'ts':
+        return 'typescript';
+      default:
+        return 'plaintext';
+    }
   };
 
   useEffect(() => {
@@ -362,9 +480,13 @@ export function Code() {
       )}
 
       <div className="rounded-lg overflow-hidden border border-black">
+        <p className="text-xs text-gray-500 mb-1">
+          Language: {programmingLanguage}
+        </p>
         <Editor
+          
           height="350px"
-          defaultLanguage="javascript"
+          defaultlanguage="javascript"
           theme="vs"
           onMount={handleEditorDidMount}
           options={{

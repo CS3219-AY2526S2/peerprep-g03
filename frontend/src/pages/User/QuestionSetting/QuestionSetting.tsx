@@ -62,11 +62,13 @@ export default function QuestionSetting() {
 
       dispatch(
         initialiseCollab({
-          questionTopic: formData.questionTopic,
-          questionDifficulty: formData.questionDifficulty,
-          programmingLanguage: formData.programmingLanguage,
+          questionTopic: formData.questionTopic, 
+          questionDifficulty: formData.questionDifficulty, 
+          programmingLanguage: formData.programmingLanguage, 
+          questionId: questionData.id, // get question id
           questionTitle: questionData.title,
-          question: questionData.description,
+          questionDescription: questionData.description, // get question description
+          questionStarterCode: questionData.starterCode // get starter code
         })
       );
 
@@ -141,11 +143,16 @@ export default function QuestionSetting() {
       const existingSession = await getRejoinableRoomSession(username);
 
       if (existingSession?.roomId && existingSession.status === 'active') {
+        // Existing active session found, rejoin it
         dispatch(
           initialiseCollab({
             questionTopic: formData.questionTopic,
             questionDifficulty: formData.questionDifficulty,
             programmingLanguage: formData.programmingLanguage,
+            questionId: existingSession.questionId,
+            questionTitle: existingSession.questionTitle,
+            questionDescription: existingSession.questionDescription,
+            questionStarterCode: existingSession.questionStarterCode,
             roomId: existingSession.roomId,
             partner: existingSession.partner ?? null,
             matchId: existingSession.matchId ?? null,
@@ -158,6 +165,10 @@ export default function QuestionSetting() {
           JSON.stringify({
             username: authValue.username,
             role: authValue.role,
+            questionId: existingSession.questionId,
+            questionTitle: existingSession.questionTitle,
+            questionDescription: existingSession.questionDescription,
+            questionStarterCode: existingSession.questionStarterCode,
             roomId: existingSession.roomId,
             partner: existingSession.partner ?? null,
             question: null,
@@ -172,35 +183,46 @@ export default function QuestionSetting() {
     }
 
     const questionData = await saveSetting();
+    // alr save questionTopic, questionDifficulty, programmingLanguage, questionId
+    // questionTitle, questionDescription, questionStarterCode
 
     if (questionData) {
       try {
         const matchId = generateSoloId();
-        const session = await startRoomSession(username, matchId);
+        const session = await startRoomSession(username, matchId, questionData.id, questionData.title, questionData.description, questionData.starterCode);
 
         dispatch(
-          initialiseCollab({
-            questionTopic: formData.questionTopic,
-            questionDifficulty: formData.questionDifficulty,
-            programmingLanguage: formData.programmingLanguage,
-            questionTitle: questionData.title,
-            question: questionData.description,
-            roomId: session.roomId,
-            partner: null,
-            matchId,
-            isStale: false,
-          })
+            initialiseCollab({
+                roomId: session.roomId,
+                partner: null,
+                matchId: matchId,
+                isStale: false,
+                questionId: questionData.id,
+                questionTitle: questionData.title,
+                questionDescription: questionData.description,
+                questionStarterCode: questionData.starterCode,
+
+            })
         );
 
+        // store question id, question title, question description
         localStorage.setItem(
-          'collabSession',
-          JSON.stringify({
-            username: authValue.username,
-            role: authValue.role,
-            roomId: session.roomId,
-            partner: null,
-            question: questionData.description,
-          })
+            'collabSession',
+            JSON.stringify({
+                username: authValue.username,
+                role: authValue.role,
+                roomId: session.roomId,
+                partner: null,
+                matchId: matchId,
+                isStale: false,
+                questionTopic: formData.questionTopic,
+                questionDifficulty: formData.questionDifficulty,
+                programmingLanguage: formData.programmingLanguage,
+                questionId: questionData.id,
+                questionTitle: questionData.title,
+                questionDescription: questionData.description,
+                questionStarterCode: questionData.starterCode,
+            })
         );
 
         navigate('/collaboration');

@@ -5,6 +5,9 @@ export type SessionUserStatus = 'active' | 'submitted' | 'left' | 'disconnected'
 export type StartRoomSessionResponse = {
   roomId: string;
   questionId?: string;
+  questionTitle?: string;
+  questionDescription?: string;
+  questionStarterCode?: string;
   status?: string;
   partner?: string | null;
   userStatus?: SessionUserStatus;
@@ -15,6 +18,9 @@ export type GetRejoinableRoomSessionResponse = {
   roomId: string;
   matchId?: string;
   questionId?: string;
+  questionTitle?: string;
+  questionDescription?: string;
+  questionStarterCode?: string;
   status?: string;
   partner?: string | null;
   userStatus?: SessionUserStatus;
@@ -96,13 +102,14 @@ export async function getRejoinableRoomSession(userId: string) {
   return handleJsonResponse<GetRejoinableRoomSessionResponse>(response);
 }
 
-export async function startRoomSession(userId: string, matchId: string) {
+// pass questionid too
+export async function startRoomSession(userId: string, matchId: string, questionId: string, questionTitle: string, questionDescription: string, questionStarterCode: string ) {
   const response = await fetch(`${ROOM_SESSION_BASE_URL}/start`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userId, matchId }),
+    body: JSON.stringify({ userId, matchId, questionId, questionTitle, questionDescription, questionStarterCode }),
   });
 
   return handleJsonResponse<StartRoomSessionResponse>(response);

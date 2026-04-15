@@ -34,3 +34,7 @@ export async function postAttempt(timestamp, user1, user2, questionTitle, soluti
 
     return res.json();
 }
+// export async function postAttempt(timestamp, user1, user2, questionTitle, solution){
+//     await new Promise((resolve) => setTimeout(resolve, 500));
+//     return {status:200};
+// }
