@@ -14,7 +14,6 @@ describe('Question Controller Unit Tests', () => {
         jest.clearAllMocks(); // Ensure call counts don't bleed between tests
     });
 
-    // --- Original Aligned Tests ---
 
     test('getQuestions should return 200 and paginated data', async () => {
         const mockData = { questions: [], totalCount: 0, totalPages: 0 };
@@ -40,7 +39,6 @@ describe('Question Controller Unit Tests', () => {
         expect(res._getJSONData().error).toBe("Duplicate title found.");
     });
 
-    // --- 10 NEW TEST CASES ---
 
     // 1. Success Case: Create Question
     test('createQuestion should return 201 when creation is successful', async () => {
