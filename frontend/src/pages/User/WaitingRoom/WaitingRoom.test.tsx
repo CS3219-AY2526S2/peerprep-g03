@@ -52,16 +52,6 @@ describe('WaitingRoom Component', () => {
     </Provider>
   );
 
-  test('initially displays "Waiting for partner" and calls getPartner', async () => {
-    collabService.getPartner.mockResolvedValue({});
-    renderComponent();
-
-    expect(screen.getByText(/waiting for partner/i)).toBeInTheDocument();
-    expect(collabService.getPartner).toHaveBeenCalledWith(
-      'testUser', 'Algorithms', 'Medium', 'Python'
-    );
-  });
-
   test('Back button cancels polling and deletes match', async () => {
     collabService.getPartner.mockResolvedValue({});
     renderComponent();

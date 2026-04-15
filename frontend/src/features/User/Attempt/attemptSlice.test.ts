@@ -1,4 +1,4 @@
-import attemptReducer, { initialise, reset, fetchAttempt } from './attemptSlice';
+import attemptReducer, { initialiseAttempt, reset, fetchAttempt } from './attemptSlice';
 import { getAttemptDetail } from '../../../services/Attempts';
 import { configureStore } from '@reduxjs/toolkit';
 
@@ -17,7 +17,7 @@ describe('attemptSlice Reducers', () => {
 
     test('should handle initialise', () => {
         const payload = { username: "user1", timestamp: "123", questionTitle: "T1", submittedSolution: "S1", suggestedSolution: "G1" };
-        const actual = attemptReducer(initialState, initialise(payload));
+        const actual = attemptReducer(initialState, initialiseAttempt(payload));
         expect(actual.value).toEqual(payload);
     });
 

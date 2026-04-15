@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import questionReducer, {
-    initialise,
+    initialiseQns,
     reset,
     fetchQuestionDetail,
     fetchAllQuestions,
@@ -22,9 +22,18 @@ describe('questionSlice', () => {
 
     describe('Synchronous Reducers', () => {
         test('initialise updates the value object', () => {
-            const payload = { questionTitle: 'New Title', questionTopic: ['Arrays'] };
-            const actual = questionReducer(initialState, initialise(payload));
-            expect(actual.value.questionTitle).toBe('New Title');
+          const initialState = {
+            value: { id: null, questionTitle: '', questionTopic: [] },
+            list: [],
+            stateStatus: 'idle'
+          };
+
+          const payload = { questionTitle: 'New Title', questionTopic: ['Arrays'] };
+
+          const actual = questionReducer(initialState, initialiseQns(payload));
+
+          expect(actual.value.questionTitle).toBe('New Title');
+          expect(actual.value.questionTopic).toEqual(['Arrays']);
         });
 
         test('reset returns state to default and clears errors', () => {

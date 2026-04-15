@@ -1,5 +1,5 @@
 import authenticationReducer, {
-    initialise, logout, fetchAuthenticationDetail
+    initialiseAuth, logout, fetchAuthenticationDetail
 } from './authenticationSlice';
 import { getUserProfile } from '../../services/Authentication';
 import { configureStore } from '@reduxjs/toolkit';
@@ -28,7 +28,7 @@ describe('authenticationSlice Reducers', () => {
 
     test('should handle initialise', () => {
         const newUser = { username: "tester", role: "User", email: "t@t.com", proficiency: "Beginner", JWToken: "jwt" };
-        const actual = authenticationReducer(initialState, initialise(newUser));
+        const actual = authenticationReducer(initialState, initialiseAuth(newUser));
         expect(actual.value).toEqual(newUser);
     });
 });

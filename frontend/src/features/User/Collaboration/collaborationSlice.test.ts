@@ -1,5 +1,5 @@
 import collaborationReducer, {
-    initialise,
+    initialiseCollab,
     reset,
     resetStatus,
     setPartner,
@@ -14,12 +14,15 @@ const mockedGetPartner = getPartner as jest.MockedFunction<typeof getPartner>;
 
 describe('collaborationSlice', () => {
     const initialStateValue = {
+        isReconnecting: false,
+        matchId: null,
         questionTitle: null,
         questionTopic: null,
         questionDifficulty: null,
         programmingLanguage: null,
         question: null,
         partner: null,
+        roomId: null,
         solution: null,
     };
 
@@ -35,7 +38,7 @@ describe('collaborationSlice', () => {
 
         test('should handle initialise', () => {
             const payload = { questionTitle: 'New Title', questionTopic: 'Strings' };
-            const actual = collaborationReducer(initialState, initialise(payload));
+            const actual = collaborationReducer(initialState, initialiseCollab(payload));
             expect(actual.value.questionTitle).toBe('New Title');
             expect(actual.value.questionTopic).toBe('Strings');
         });
