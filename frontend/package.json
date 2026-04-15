@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@ai-sdk/react": "^1.1.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource/roboto": "^5.2.9",
@@ -18,7 +19,9 @@
     "@mui/material": "^7.3.8",
     "@reduxjs/toolkit": "^2.11.2",
     "@tailwindcss/vite": "^4.1.18",
+    "ai": "^4.1.0",
     "axios": "^1.13.6",
+    "lib0": "^0.2.117",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-redux": "^9.2.0",
@@ -27,9 +30,7 @@
     "y-monaco": "^0.1.6",
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
-    "yjs": "^13.6.29",
-    "@ai-sdk/react": "^1.1.1",
-    "ai": "^4.1.0"
+    "yjs": "^13.6.29"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

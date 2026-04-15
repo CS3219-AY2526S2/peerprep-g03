@@ -61,7 +61,7 @@ export function QuestionWithChat() {
         api: 'http://localhost:3006/api/ai/explain',
     });
 
-    const { questionTopic, questionDifficulty, programmingLanguage, question, questionTitle } = value;
+    const { questionTopic, questionDifficulty, programmingLanguage, questionDescription, questionTitle, questionStarterCode } = value;
 
     useEffect(() => {
         if (questionTopic && questionDifficulty && programmingLanguage && stateStatus === 'idle') {
@@ -162,14 +162,31 @@ export function QuestionWithChat() {
             )}
 
             {/* --- CORE CONTENT --- */}
-            {!atQuestionPage && <Chat/>}
+            {/*!atQuestionPage && <Chat/>*/}
+            {!atQuestionPage && (
+                <div className="flex flex-col h-[355px] border rounded-lg bg-gray-900 text-gray-100">
+                    
+                    {/* Header */}
+                    <div className="px-3 py-2 text-xs font-semibold border-b border-gray-700 bg-gray-800">
+                    Starter Code
+                    </div>
+
+                    {/* Code Area */}
+                    <pre className="flex-1 overflow-auto p-4 text-sm font-mono whitespace-pre-wrap">
+                    <code>
+                        {questionStarterCode?.trim() || 'No starter code available'}
+                    </code>
+                    </pre>
+
+                </div>
+            )}
 
             {atQuestionPage && (
                 <>
                     <p style={{ color: darkBlue }} className="text-center font-bold mb-2"> 
                         {questionTitle} 
                     </p>
-                    <TextBox height={355} label="" text={question}/>
+                    <TextBox height={355} label="" text={questionDescription}/>
                 </>
             )}
 
@@ -180,7 +197,7 @@ export function QuestionWithChat() {
                     onClick={() => setAtQuestionPage(true)}
                 />
                 <Button 
-                    label="Chat" 
+                    label="Starter Code" 
                     variant={atQuestionPage ? "outlined" : "contained"} 
                     onClick={() => setAtQuestionPage(false)}
                 />

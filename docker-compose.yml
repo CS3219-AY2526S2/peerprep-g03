@@ -164,18 +164,20 @@ services:
   collab-service-websocket:
     build: ./services/collab-service-websocket
     container_name: collab-service-websocket
+    env_file:
+    - ./services/collab-service-websocket/.env
     depends_on:
       - collab-db
-      - collab-service-rooms
     environment:
       HOST: 0.0.0.0
-      PORT: 3004
+      PORT: 3012
       JWT_SECRET: supersecretjwtkey
     ports:
-      - "3004:3004"
+      - "3012:3012"
     networks:
       - app-network
-  
+
+
   match-service:
     build: ./services/match-service
     container_name: match-service
@@ -216,7 +218,7 @@ services:
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
       VITE_COLLAB_SERVICE_ROOMS_URL: http://collab-service-rooms:3002
       VITE_MATCH_SERVICE_URL: http://match-service:3003
-      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3004
+      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3012
       VITE_AI_SERVICE_URL: http://ai-service:3006
     ports:
       - "5173:5173"

@@ -54,6 +54,7 @@ export default function WaitingRoom() {
   const questionTopic: string = collabValue.questionTopic;
   const questionDifficulty: string = collabValue.questionDifficulty;
   const programmingLanguage: string = collabValue.programmingLanguage;
+ 
   const username: string = authValue.username;
 
   const runMatchmakingSequence = async (signal: AbortSignal) => {
@@ -121,6 +122,10 @@ export default function WaitingRoom() {
 
           dispatch(
             initialiseCollab({
+              questionId: existingSession.questionId,
+              questionTitle: existingSession.questionTitle,
+              questionDescription: existingSession.questionDescription,
+              questionStarterCode: existingSession.questionStarterCode,
               roomId: existingSession.roomId,
               partner: existingSession.partner ?? null,
               matchId: existingSession.matchId ?? null,
@@ -135,7 +140,10 @@ export default function WaitingRoom() {
               role: authValue.role,
               roomId: existingSession.roomId,
               partner: existingSession.partner ?? null,
-              question: collabValue.question,
+              questionId: collabValue.questionId,
+              questionTitle: collabValue.questionTitle,
+              questionDescription: collabValue.questionDescription,
+              questionStarterCode: collabValue.questionStarterCode,
             })
           );
 
@@ -172,7 +180,7 @@ export default function WaitingRoom() {
           return;
         }
 
-        const session = await startRoomSession(username, matchId);
+        const session = await startRoomSession(username, matchId, collabValue.questionId, collabValue.questionTitle, collabValue.questionDescription, collabValue.questionStarterCode);
         finalRoomId = session.roomId;
 
         dispatch(setRoomId(finalRoomId));
@@ -183,7 +191,11 @@ export default function WaitingRoom() {
             role: authValue.role,
             roomId: finalRoomId,
             partner: collabValue.partner,
-            question: collabValue.question,
+            questionId: collabValue.questionId,
+            questionTitle: collabValue.questionTitle,
+            questionDescription: collabValue.questionDescription,
+            questionStarterCode: collabValue.questionStarterCode,
+        
           })
         );
       }
@@ -229,6 +241,7 @@ export default function WaitingRoom() {
         })
       );
 
+      // store question id, question title, question description
       localStorage.setItem(
         'collabSession',
         JSON.stringify({
@@ -236,7 +249,10 @@ export default function WaitingRoom() {
           role: authValue.role,
           roomId: finalRoomId,
           partner: session.partner ?? partner ?? null,
-          question: collabValue.question,
+          questionId: collabValue.questionId,
+          questionTitle: collabValue.questionTitle,
+          questionDescription: collabValue.questionDescription,
+          questionStarterCode: collabValue.questionStarterCode,
         })
       );
 

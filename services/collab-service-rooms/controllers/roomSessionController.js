@@ -9,7 +9,7 @@ export class RoomSessionController {
 
   startSession = async (req, res) => {
     try {
-      const { userId, matchId } = req.body;
+      const { userId, matchId, questionId, questionTitle, questionDescription, questionStarterCode } = req.body;
 
       if (!userId || !matchId) {
         return res.status(400).json({
@@ -20,6 +20,10 @@ export class RoomSessionController {
       const result = await this.roomSessionService.startSession({
         userId,
         matchId,
+        questionId,
+        questionTitle,
+        questionDescription,
+        questionStarterCode,
       });
 
       return res.status(201).json(result);

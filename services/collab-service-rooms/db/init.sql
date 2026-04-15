@@ -8,6 +8,9 @@ CREATE TABLE sessions (
   -- can be null for private rooms, but for now we can just generate a match_id for every room session
   -- unique even for same partners, so that we can track multiple sessions between same partners
   question_id TEXT NOT NULL,
+  question_title TEXT NOT NULL,
+  question_description TEXT NOT NULL,
+  question_starter_code TEXT NOT NULL,
 
   status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
 
@@ -53,4 +56,11 @@ CREATE TABLE submissions (
   FOREIGN KEY (room_id, submitted_by_user_id)
     REFERENCES session_users(room_id, user_id)
     ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS yjs_room_state (
+  room_id TEXT PRIMARY KEY,
+  doc_state BYTEA NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

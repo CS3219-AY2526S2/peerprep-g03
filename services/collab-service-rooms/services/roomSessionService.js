@@ -69,6 +69,9 @@ export class RoomSessionService {
       roomId: sessionRow.room_id,
       matchId: sessionRow.match_id,
       questionId: sessionRow.question_id,
+      questionTitle: sessionRow.question_title,
+      questionDescription: sessionRow.question_description,
+      questionStarterCode: sessionRow.question_starter_code,
       users: sessionUsersRows.map((user) => this.mapSessionUserRow(user)),
       status: sessionRow.status,
       submittedUsers: sessionUsersRows
@@ -83,7 +86,7 @@ export class RoomSessionService {
 
   async hydrateSessionFromDb(roomId) {
     const sessionRes = await pool.query(
-      `SELECT room_id, match_id, question_id, status
+      `SELECT room_id, match_id, question_id, question_title, question_description, question_starter_code, status
        FROM sessions
        WHERE room_id = $1
        LIMIT 1`,
@@ -130,6 +133,9 @@ export class RoomSessionService {
           s.room_id,
           s.match_id,
           s.question_id,
+          s.question_title,
+          s.question_description,
+          s.question_starter_code,
           s.status,
           su.user_status,
           su.last_active_at
@@ -181,13 +187,19 @@ export class RoomSessionService {
     return activeSessionRes.rows[0]?.room_id || null;
   }
 
-  async startSession({ userId, matchId }) {
+  // use questionid
+  async startSession({ userId, matchId, questionId,  questionTitle, questionDescription, questionStarterCode }) {
+    console.log('Starting session for:', { userId, matchId, questionId, questionTitle, questionDescription, questionStarterCode });
     if (!userId || !matchId) {
       throw new Error('userId and matchId are required');
     }
 
+    if (!questionId || !questionTitle || !questionDescription || !questionStarterCode) {
+      throw new Error('All question details are required');
+    }
+
     const existingSessionRes = await pool.query(
-      `SELECT room_id, question_id, status
+      `SELECT room_id, question_id, question_title, question_description, question_starter_code, status
        FROM sessions
        WHERE match_id = $1
          AND status = 'active'
@@ -240,6 +252,9 @@ export class RoomSessionService {
             room_id: existingSessionRow.room_id,
             match_id: matchId,
             question_id: existingSessionRow.question_id,
+            question_title: existingSessionRow.question_title,
+            question_description: existingSessionRow.question_description,
+            question_starter_code: existingSessionRow.question_starter_code,
             status: existingSessionRow.status,
           },
           sessionUsersRes.rows
@@ -253,6 +268,9 @@ export class RoomSessionService {
         return {
           roomId: existingSession.roomId,
           questionId: existingSession.questionId,
+          questionTitle: existingSession.questionTitle,
+          questionDescription: existingSession.questionDescription,
+          questionStarterCode: existingSession.questionStarterCode,
           status: existingSession.status,
           partner,
           userStatus: USER_SESSION_STATUS.ACTIVE,
@@ -268,10 +286,14 @@ export class RoomSessionService {
 
     const roomId = this.generateRoomId();
 
+    // use real question id
     const session = {
       roomId,
       matchId,
-      questionId: 'sample-question-id',
+      questionId: questionId,
+      questionTitle: questionTitle,
+      questionDescription: questionDescription,
+      questionStarterCode: questionStarterCode,
       users: [this.createSessionUser(userId)],
       status: SESSION_STATUS.ACTIVE,
       submittedUsers: [],
@@ -286,16 +308,16 @@ export class RoomSessionService {
       await client.query('BEGIN');
 
       const sessionRes = await client.query(
-        `INSERT INTO sessions (room_id, match_id, question_id, status)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO sessions (room_id, match_id, question_id, question_title, question_description, question_starter_code, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (match_id) DO NOTHING
          RETURNING room_id, question_id, status`,
-        [session.roomId, session.matchId, session.questionId, session.status]
+        [session.roomId, session.matchId, session.questionId, session.questionTitle, session.questionDescription, session.questionStarterCode, session.status]
       );
 
       if (sessionRes.rows.length === 0) {
         const raceWinnerRes = await client.query(
-          `SELECT room_id, question_id, status
+          `SELECT room_id, question_id, question_title, question_description, question_starter_code, status
            FROM sessions
            WHERE match_id = $1
            LIMIT 1`,
@@ -340,6 +362,9 @@ export class RoomSessionService {
             room_id: raceWinner.room_id,
             match_id: matchId,
             question_id: raceWinner.question_id,
+            question_title: raceWinner.question_title,
+            question_description: raceWinner.question_description,
+            question_starter_code: raceWinner.question_starter_code,
             status: raceWinner.status,
           },
           sessionUsersRes.rows
@@ -353,6 +378,9 @@ export class RoomSessionService {
         return {
           roomId: existingSession.roomId,
           questionId: existingSession.questionId,
+          questionTitle: existingSession.questionTitle,
+          questionDescription: existingSession.questionDescription,
+          questionStarterCode: existingSession.questionStarterCode,
           status: existingSession.status,
           partner,
           userStatus: USER_SESSION_STATUS.ACTIVE,
@@ -374,6 +402,9 @@ export class RoomSessionService {
       return {
         roomId,
         questionId: session.questionId,
+        questionTitle: session.questionTitle,
+        questionDescription: session.questionDescription,
+        questionStarterCode: session.questionStarterCode,
         status: session.status,
         partner: null,
         userStatus: USER_SESSION_STATUS.ACTIVE,
@@ -467,6 +498,9 @@ export class RoomSessionService {
         room_id: session.roomId,
         match_id: session.matchId,
         question_id: session.questionId,
+        question_title: session.questionTitle,
+        question_description: session.questionDescription,
+        question_starter_code: session.questionStarterCode,
         status: session.status,
       },
       sessionUsersRes.rows
@@ -480,6 +514,9 @@ export class RoomSessionService {
       success: true,
       roomId,
       questionId: nextSession.questionId,
+      questionTitle: nextSession.questionTitle,
+      questionDescription: nextSession.questionDescription,
+      questionStarterCode: nextSession.questionStarterCode,
       status: nextSession.status,
       partner,
       session: nextSession,
@@ -560,6 +597,9 @@ export class RoomSessionService {
         room_id: session.roomId,
         match_id: session.matchId,
         question_id: session.questionId,
+        question_title: session.questionTitle,
+        question_description: session.questionDescription,
+        question_starter_code: session.questionStarterCode,
         status: session.status,
       },
       sessionUsersRes.rows
@@ -639,6 +679,9 @@ export class RoomSessionService {
         room_id: session.roomId,
         match_id: session.matchId,
         question_id: session.questionId,
+        question_title: session.questionTitle,
+        question_description: session.questionDescription,
+        question_starter_code: session.questionStarterCode,
         status: nextStatus,
       },
       sessionUsersRes.rows
@@ -671,7 +714,7 @@ export class RoomSessionService {
       await client.query('BEGIN');
 
       const sessionRes = await client.query(
-        `SELECT room_id, match_id, question_id, status
+        `SELECT room_id, match_id, question_id, question_title, question_description, question_starter_code, status
          FROM sessions
          WHERE room_id = $1
          LIMIT 1`,
@@ -748,6 +791,9 @@ export class RoomSessionService {
             room_id: sessionRow.room_id,
             match_id: sessionRow.match_id,
             question_id: sessionRow.question_id,
+            question_title: sessionRow.question_title,
+            question_description: sessionRow.question_description,
+            question_starter_code: sessionRow.question_starter_code,
             status: nextStatus,
           },
           sessionUsersRes.rows
