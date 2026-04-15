@@ -236,6 +236,7 @@ volumes:
   user-db-data:
   question-db-data:
   collab-db-data:
+  records-db-data:
 ```
 
 ---

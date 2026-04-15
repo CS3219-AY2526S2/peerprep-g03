@@ -49,6 +49,8 @@ async function createUser(username, password, email, role = "User") {
     "INSERT INTO users(username, password, email, role) VALUES($1, $2, $3, $4) RETURNING *",
     [usernameLower, hashedPassword, encryptedEmail, role]
   );
+
+  console.log(usernameLower, hashedPassword, encryptedEmail, role)
   return res.rows[0];
 }
 

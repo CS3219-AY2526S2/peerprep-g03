@@ -177,13 +177,16 @@ services:
   collab-service-websocket:
     build: ./services/collab-service-websocket
     container_name: collab-service-websocket
-    env_file:
-    - ./services/collab-service-websocket/.env
     depends_on:
       - collab-db
     environment:
       HOST: 0.0.0.0
       PORT: 3012
+      PGHOST: collab-db
+      PGPORT: 5432
+      PGDATABASE: collabdb
+      PGUSER: postgres
+      PGPASSWORD: secret
       JWT_SECRET: supersecretjwtkey
     ports:
       - "3012:3012"

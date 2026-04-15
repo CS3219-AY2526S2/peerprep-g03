@@ -40,6 +40,7 @@ export function Code() {
   const questionDescription = collabValue.questionDescription ?? '';
   const programmingLanguage = collabValue.programmingLanguage ?? '';
   const questionStarterCode = collabValue.questionStarterCode ?? '';
+  const questionDifficulty = collabValue.questionDifficulty ?? '';
   const username = authValue.username ?? '';
 
   const havePartner = !!partner;
@@ -154,9 +155,11 @@ export function Code() {
       const sharedDocument = getSharedDocument()
       
       // is this needed?
-      const questionId: string = collabValue.questionid;
+      const questionId: string = collabValue.questionId;
       const partnerName: string = collabValue.partner;
       const username: string = authValue.username;
+       console.log(collabValue)
+    //   console.log(questionId, "desc" ,questionDescription, "title" ,questionTitle);
 
       try {
         if (roomId && roomId !== 'private-room') {
@@ -164,13 +167,14 @@ export function Code() {
         }
 
         // // 1. GET question details
-        // const res = await fetch(`http://localhost:3003/api/questions/${questionId}`, {
+        // const res = await fetch(`http://localhost:3003/questions/${questionId}`, {
         // headers: {
         //     Authorization: `Bearer ${authValue.token}`
         // }
         // });
 
         // const question = await res.json();
+        // console.log(question);
 
         // const template = question.templates?.[0];
 
@@ -180,14 +184,19 @@ export function Code() {
             body: JSON.stringify({
                 user1_username: username.toLowerCase(),
                 user2_username: partnerName.toLowerCase(),
-                question_text: questionId,
+                question_text: questionDescription,
                 submitted_code: sharedDocument,
 
                 // FROM QUESTION SERVICE (MOCKED DATA)
-                suggested_solution: "Hellow", //"template?.solution_code || ",
-                programming_language: "Java",// "template?.language || ",
-                question_topic: "string",// ""question.topic_tags?.[0] || ",
-                difficulty: "Easy", //"question.difficulty"
+                // suggested_solution: template?.solution_code || "No solution",
+                // programming_language: question.programmingLanguage || "no language",
+                // question_topic: question.topic_tags?.[0] || "no topic",
+                // difficulty: question.difficulty || "no difficulty,"
+                suggested_solution: "Hello world!", //template?.solution_code || "No solution",
+                programming_language: programmingLanguage || "no language",
+                question_topic: questionDescription || "no topic",
+                difficulty: questionDifficulty || "no difficulty",
+
             }),
         });
 
