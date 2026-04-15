@@ -45,6 +45,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: questiondb
+      
     volumes:
       - question-db-data:/var/lib/postgresql/data
       - ./services/question-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -116,10 +117,17 @@ services:
       - question-db
     environment:
       DATABASE_URL: postgres://postgres:secret@question-db:5432/questiondb
+      DB_USER: postgres
+      DB_HOST: question-db
+      DB_NAME: questiondb
+      DB_PASSWORD: secret
+      DB_PORT: 5432
       PORT: 3001
       JWT_SECRET: supersecretjwtkey
     ports:
       - "3001:3001"
+    volumes:
+      - ./services/question-service/scripts:/app/scripts
     networks:
       - app-network
 
@@ -162,10 +170,10 @@ services:
       - collab-db
     environment:
       HOST: 0.0.0.0
-      PORT: 3004
+      PORT: 3012
       JWT_SECRET: supersecretjwtkey
     ports:
-      - "3004:3004"
+      - "3012:3012"
     networks:
       - app-network
 
@@ -210,7 +218,7 @@ services:
       VITE_QUESTION_SERVICE_URL: http://question-service:3001
       VITE_COLLAB_SERVICE_ROOMS_URL: http://collab-service-rooms:3002
       VITE_MATCH_SERVICE_URL: http://match-service:3003
-      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3004
+      VITE_COLLAB_SERVICE_WEBSOCKET_URL: http://collab-service-websocket:3012
       VITE_AI_SERVICE_URL: http://ai-service:3006
     ports:
       - "5173:5173"

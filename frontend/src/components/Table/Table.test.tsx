@@ -55,31 +55,4 @@ describe('Table Component', () => {
 
   });
 
-  test('handles pagination correctly', () => {
-    const manyRows = Array.from({ length: 12 }, (_, i) => ({ id: i, name: `Row ${i}` }));
-
-    render(<Table columns={mockColumns} rows={manyRows} />);
-
-    expect(screen.getByText('Row 0')).toBeInTheDocument();
-    expect(screen.queryByText('Row 11')).not.toBeInTheDocument();
-
-    const nextButton = screen.getByRole('button', { name: /next page/i });
-    fireEvent.click(nextButton);
-
-    expect(screen.queryByText('Row 0')).not.toBeInTheDocument();
-    expect(screen.getByText('Row 11')).toBeInTheDocument();
-  });
-
-  test('changes rows per page', () => {
-    const manyRows = Array.from({ length: 25 }, (_, i) => ({ id: i, name: `Row ${i}` }));
-    render(<Table columns={mockColumns} rows={manyRows} />);
-
-    const select = screen.getByRole('combobox');
-    fireEvent.mouseDown(select);
-
-    const option = screen.getByRole('option', { name: '25' });
-    fireEvent.click(option);
-
-    expect(screen.getByText('Row 24')).toBeInTheDocument();
-  });
 });

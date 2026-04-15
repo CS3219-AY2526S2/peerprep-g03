@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 const { Pool } = pg;
 
 const HOST = process.env.HOST || '0.0.0.0';
-const PORT = Number(process.env.PORT || 3004);
+const PORT = Number(process.env.PORT || 3012);
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -363,7 +363,7 @@ server.listen(PORT, HOST, () => {
 // const { Pool } = pg;
 
 // const HOST = process.env.HOST || '0.0.0.0';
-// const PORT = Number(process.env.PORT || 3004);
+// const PORT = Number(process.env.PORT || 3012);
 
 // const pool = new Pool({
 //   host: process.env.PGHOST,
@@ -649,7 +649,7 @@ server.listen(PORT, HOST, () => {
 // import { setPersistence, setupWSConnection } from 'y-websocket/bin/utils.js'
 
 // const HOST = process.env.HOST || '0.0.0.0'
-// const PORT = Number(process.env.PORT || 3004)
+// const PORT = Number(process.env.PORT || 3012)
 
 // const server = http.createServer((req, res) => {
 //   res.writeHead(200, { 'Content-Type': 'text/plain' })

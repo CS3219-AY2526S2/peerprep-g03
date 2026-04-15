@@ -187,7 +187,7 @@ export function Code() {
 
     // if (!hasInitializedRef.current) {
     //   const ydoc = new Y.Doc();
-    //   const provider = new WebsocketProvider('ws://localhost:3004', roomId, ydoc);
+    //   const provider = new WebsocketProvider('ws://localhost:3012', roomId, ydoc);
     //   const yText = ydoc.getText('monaco');
 
     //   provider.on('status', (event: { status: string }) => {
@@ -207,12 +207,12 @@ export function Code() {
     if (!hasInitializedRef.current) {
       const ydoc = new Y.Doc();
       // const provider = new CustomYjsWsProvider({
-      //   url: 'ws://localhost:3004',
+      //   url: 'ws://localhost:3012',
       //   roomId,
       //   ydoc,
       // });
       const provider = new CustomYjsWsProvider({
-        url: 'ws://localhost:3004',
+        url: 'ws://localhost:3012',
         roomId,
         ydoc,
         token: authValue.JWToken,

@@ -4,8 +4,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-EXPOSE 3004
+EXPOSE 3012
 
 ENV HOST=0.0.0.0
-ENV PORT=3004
+ENV PORT=3012
 CMD ["npm", "start"]
