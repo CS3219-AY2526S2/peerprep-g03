@@ -32,8 +32,10 @@ export function AttemptRecordsTable() {
     //     navigate(`/attempt/view/${x}`);
     // };
 
-    const userId = value?.user_id || 1; // fallback for now
+    const userId = value?.id || 1; // fallback for now
     const username: string = value?.username || "user1";
+    console.log("AUTH VALUE:", value);
+    console.log("USED USER ID:", userId);
 
     const [rows, setRows] = useState<AllAttemptRecord[]>([]);
 

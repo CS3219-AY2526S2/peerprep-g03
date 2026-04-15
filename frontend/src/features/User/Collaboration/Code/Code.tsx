@@ -166,8 +166,8 @@ export function Code() {
         // const question = await res.json();
 
         // const template = question.templates?.[0];
-        
-        await fetch("http://localhost:3004/api/records", {
+
+        await fetch("http://localhost:3004/records", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -176,11 +176,11 @@ export function Code() {
                 question_text: question,
                 submitted_code: sharedDocument,
 
-                // FROM QUESTION SERVICE
-                suggested_solution: "template?.solution_code || ",
-                programming_language: "template?.language || ",
-                question_topic: "question.topic_tags?.[0] || ",
-                difficulty: "question.difficulty"
+                // FROM QUESTION SERVICE (MOCKED DATA)
+                suggested_solution: "Hellow", //"template?.solution_code || ",
+                programming_language: "Java",// "template?.language || ",
+                question_topic: "string",// ""question.topic_tags?.[0] || ",
+                difficulty: "Easy", //"question.difficulty"
             }),
         });
 
@@ -213,7 +213,7 @@ export function Code() {
 
     if (!hasInitializedRef.current) {
       const ydoc = new Y.Doc();
-      const provider = new WebsocketProvider('ws://localhost:3004', roomId, ydoc);
+      const provider = new WebsocketProvider('ws://localhost:3012', roomId, ydoc);
       const yText = ydoc.getText('monaco');
 
       provider.on('status', (event: { status: string }) => {

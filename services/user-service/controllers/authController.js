@@ -78,6 +78,7 @@ exports.loginUser = async (req, res) => {
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: "15m" });
     // give to frontend token + userid, username and role
     res.json({
+      id: user.id,
       username: user.username,
       role: user.role,
       email: decryptEmail(user.email),

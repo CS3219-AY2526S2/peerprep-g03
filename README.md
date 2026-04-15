@@ -26,7 +26,8 @@ PeerPrep follows a **microservices-per-domain pattern**, where each service owns
 | **Question Service** | `3001` | Question bank (CRUD), categories |
 | **Collab Rooms** | `3002` | Session metadata & history |
 | **Match Service** | `3003` | Peer matching via Redis |
-| **Collab WebSocket** | `3004` | Real-time code sync |
+| **Collab WebSocket** | `3012` | Real-time code sync |
+| **Records Service** | `3004` | History bank for past Collab Sessions |
 | **AI Service** | `3006` | Gemini-powered hints & explanations |
 
 ---
@@ -41,6 +42,7 @@ PeerPrep follows a **microservices-per-domain pattern**, where each service owns
 | question-service | PostgreSQL |
 | collab-service | PostgreSQL |
 | match-service | Redis |
+| records-service | PostgreSQL |
 
 ---
 
@@ -146,10 +148,17 @@ SELECT * FROM submissions;
 * History tracking
 * PostgreSQL-backed
 
-#### Collab WebSocket (`3004`)
+#### Collab WebSocket (`3012`)
 
 * Real-time code syncing
 * WebSocket-based communication
+
+---
+
+### Records Service (`3004`)
+
+* History Recording
+* PostgreSQL-backed
 
 ---
 

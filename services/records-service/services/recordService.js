@@ -21,8 +21,6 @@ const getUsersByUsernames = async (usernames) => {
 
 export const createRecordService = async (data) => {
   if (
-    !data.user1_id ||
-    !data.user2_id ||
     !data.user1_username ||
     !data.user2_username ||
     !data.question_text ||
