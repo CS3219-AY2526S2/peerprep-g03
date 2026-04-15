@@ -72,13 +72,29 @@ async function createQuestion(title, topic, difficulty, description, templates =
     }
 }
 // Retrieve all questions (that aren't soft-deleted)
-async function getAllQuestions() {
-  const res = await pool.query(
-    "SELECT * FROM questions WHERE is_deleted = FALSE ORDER BY updated_at DESC"
-  );
-  return res.rows;
-}
+// Retrieve paginated questions
+async function getAllQuestions(page = 1, limit = 10) {
+  // Calculate how many records to skip
+  const offset = (page - 1) * limit;
 
+  // 1. Get the slice of data
+  const res = await pool.query(
+    "SELECT * FROM questions WHERE is_deleted = FALSE ORDER BY updated_at DESC LIMIT $1 OFFSET $2",
+    [limit, offset]
+  );
+
+  // 2. Get total count (needed for the frontend to know how many pages exist)
+  const countRes = await pool.query(
+    "SELECT COUNT(*) FROM questions WHERE is_deleted = FALSE"
+  );
+
+  return {
+    questions: res.rows,
+    totalCount: parseInt(countRes.rows[0].count),
+    currentPage: page,
+    totalPages: Math.ceil(parseInt(countRes.rows[0].count) / limit)
+  };
+}
 // Retrieve a single question by ID
 async function getQuestionById(id, adminId = null) {
     const client = await pool.connect();

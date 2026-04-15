@@ -30,14 +30,20 @@ const QuestionController = {
   },
 
   getQuestions: async (req, res) => {
-    try {
-     
-      const questions = await QuestionModel.getAllQuestions();
-      res.status(200).json(questions);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
+  try {
+    // 1. Extract query params (Axios sends ?page=X&limit=Y)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // 2. Pass them to the model
+    const result = await QuestionModel.getAllQuestions(page, limit);
+    
+    // 3. Return the whole result (which includes totalCount and totalPages)
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+},
 
 
   getQuestionDetail: async (req, res) => {

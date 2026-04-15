@@ -21,3 +21,4 @@ CREATE TABLE question_templates (
     solution_code TEXT,            -- The reference solution
     UNIQUE(question_id, language)  -- Prevents duplicate Python entries for one question
 );
+

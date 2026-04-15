@@ -41,11 +41,11 @@ export const releaseExistingLock = createAsyncThunk(
 );
 export const fetchAllQuestions = createAsyncThunk(
     'questions/fetchAll',
-    async (username: string, { rejectWithValue }) => {
+    async ({ username, page = 1, limit = 10 }: { username: string; page?: number; limit?: number }, { rejectWithValue }) => {
         try {
-            const response = await getQuestions(username);
-            
-            return response.data.questions; 
+            const response = await getQuestions(username, page, limit);
+            // Expecting backend to return: { questions: [], totalCount: X, totalPages: Y }
+            return response.data; 
         } catch (err: any) {
             return rejectWithValue(err.response?.data || "Server unreachable");
         }
@@ -103,6 +103,11 @@ export const deleteExistingQuestion = createAsyncThunk(
 const initialState = { 
     value: initialStateValue, 
     list: [], // This is where the table data lives
+    pagination: {
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+    },
     stateStatus: 'idle',
     serverError: null
 };
@@ -165,19 +170,28 @@ const questionSlice = createSlice({
         // Capture the lock error or any other server error
         state.serverError = action.payload; 
     })
-      .addCase(fetchAllQuestions.pending, (state) => {
-          state.stateStatus = 'loading';
-      })
-      .addCase(fetchAllQuestions.fulfilled, (state, action) => {
-          state.stateStatus = 'succeeded';
-          state.list = action.payload.map((q: any) => ({
+    .addCase(fetchAllQuestions.pending, (state) => {
+        state.stateStatus = 'loading';
+    })
+    .addCase(fetchAllQuestions.fulfilled, (state, action) => {
+        state.stateStatus = 'succeeded';
+        
+        // 1. Store the questions list
+        state.list = action.payload.questions.map((q: any) => ({
             ...q,
             topic_tags: Array.isArray(q.topic_tags) ? q.topic_tags.join(', ') : q.topic_tags
-    }));
-      })
-      .addCase(fetchAllQuestions.rejected, (state) => {
-          state.stateStatus = 'failed';
-      })
+        }));
+
+        // 2. Store pagination metadata
+        state.pagination = {
+            totalCount: action.payload.totalCount,
+            totalPages: action.payload.totalPages,
+            currentPage: action.payload.currentPage
+        };
+    })
+    .addCase(fetchAllQuestions.rejected, (state) => {
+        state.stateStatus = 'failed';
+    })
       .addCase(deleteExistingQuestion.pending, (state) => {
         state.stateStatus = 'loading';
     })
