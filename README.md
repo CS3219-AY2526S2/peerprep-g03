@@ -81,9 +81,13 @@ Open the URL shown in your terminal (usually `http://localhost:5173`).
 ```bash
 cd ..
 docker compose down
-docker compose up -d --build collab-service-rooms
-
 docker compose up --build
+```
+
+other commands
+```bash
+docker compose up -d --build collab-service-rooms
+docker restart collab-service-websocket
 ```
 
 ---
