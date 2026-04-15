@@ -7,6 +7,7 @@ CREATE TABLE questions (
     topic_tags TEXT[], 
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
     locked_by VARCHAR(255) DEFAULT NULL,
     locked_at TIMESTAMP DEFAULT NULL
 );
@@ -20,3 +21,4 @@ CREATE TABLE question_templates (
     solution_code TEXT,            -- The reference solution
     UNIQUE(question_id, language)  -- Prevents duplicate Python entries for one question
 );
+

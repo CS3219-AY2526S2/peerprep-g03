@@ -96,12 +96,19 @@ export async function releaseQuestionLock(questionId: string) {
     });
     return response.data;
 }
-export async function getQuestions(username:string){
-    
-    const response = await axios.get(`${API_URL}/`);
+export async function getQuestions(username: string, page: number = 1, limit: number = 10) {
+    // Send page and limit as query parameters: ?page=1&limit=10
+    const response = await axios.get(`${API_URL}/`, {
+        params: {
+            page: page,
+            limit: limit
+        }
+    });
+
     return {
         status: "200 OK",
-        data: { questions: response.data }
+        // Return the full data object containing { questions, totalCount, totalPages, currentPage }
+        data: response.data 
     };
 }
 

@@ -23,8 +23,8 @@ CREATE TABLE session_users (
   room_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
 
-  has_submitted BOOLEAN DEFAULT FALSE,
-  has_left BOOLEAN DEFAULT FALSE,
+  user_status TEXT NOT NULL DEFAULT 'active'
+    CHECK (user_status IN ('active', 'submitted', 'left', 'disconnected')),
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -54,4 +54,3 @@ CREATE TABLE submissions (
     REFERENCES session_users(room_id, user_id)
     ON DELETE CASCADE
 );
-

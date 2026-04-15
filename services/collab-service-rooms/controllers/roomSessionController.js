@@ -31,6 +31,16 @@ export class RoomSessionController {
     }
   };
 
+  getRejoinableSession = async (req, res) => {
+    try {
+      const { userId } = req.body;
+      const result = await this.roomSessionService.findRejoinableRoomForUser(userId);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   reconnectSession = async (req, res) => {
     try {
       const { userId, roomId } = req.body;
@@ -63,9 +73,9 @@ export class RoomSessionController {
     try {
       const { userId, roomId } = req.body;
 
-      if (!userId || !roomId) {
+      if (!userId) {
         return res.status(400).json({
-          error: 'userId and roomId are required',
+          error: 'userId is required',
         });
       }
 
@@ -83,6 +93,34 @@ export class RoomSessionController {
       console.error('leaveSession error:', error);
       return res.status(500).json({
         error: error.message || 'Failed to leave room session',
+      });
+    }
+  };
+
+  disconnectSession = async (req, res) => {
+    try {
+      const { userId, roomId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          error: 'userId is required',
+        });
+      }
+
+      const result = await this.roomSessionService.disconnectSession({
+        userId,
+        roomId,
+      });
+
+      if (!result.success) {
+        return res.status(404).json(result);
+      }
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('disconnectSession error:', error);
+      return res.status(500).json({
+        error: error.message || 'Failed to disconnect room session',
       });
     }
   };

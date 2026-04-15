@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header, TextField, PageTitle, Button, ErrorMessage} from '../../../components';
 import { getUserProfile } from '../../../services/Authentication';
 import { useDispatch } from 'react-redux';
-import { initialise } from '../../../features/Authentication/authenticationSlice';
+import { initialiseAuth } from '../../../features/Authentication/authenticationSlice';
 import { getValidUsernameError, getValidPasswordError} from '../../../commons'
 
 export default function SignIn() {
@@ -45,7 +45,7 @@ export default function SignIn() {
         localStorage.setItem("JWToken", response.JWToken);
 
         dispatch(
-            initialise({
+            initialiseAuth({
                 username: response.username,
                 role: response.role,
                 email: response.email,

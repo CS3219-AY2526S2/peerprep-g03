@@ -1,19 +1,22 @@
-// create room
-// reuse room if exists
-// validate user
-// track session status
 import { pool } from '../pool.js';
+
+const USER_SESSION_STATUS = {
+  ACTIVE: 'active',
+  SUBMITTED: 'submitted',
+  LEFT: 'left',
+  DISCONNECTED: 'disconnected',
+};
+
+const SESSION_STATUS = {
+  ACTIVE: 'active',
+  CLOSED: 'closed',
+};
+
+const STALE_TIMEOUT_MINUTES = 30;
 
 export class RoomSessionService {
   constructor() {
-    // In-memory session store for MVP
-    // key = roomId
-    // value = session object
     this.sessions = new Map();
-
-    // Optional helper map:
-    // key = matchId
-    // value = roomId
     this.matchToRoom = new Map();
   }
 
@@ -24,8 +27,7 @@ export class RoomSessionService {
   createSessionUser(userId) {
     return {
       userId,
-      hasSubmitted: false,
-      hasLeft: false,
+      userStatus: USER_SESSION_STATUS.ACTIVE,
       lastActiveAt: new Date().toISOString(),
     };
   }
@@ -34,85 +36,169 @@ export class RoomSessionService {
     return session.users.some((user) => user.userId === userId);
   }
 
-  // Insert a new session per match, insert a session user per user, should account for race conditions
+  isActiveUserStatus(userStatus) {
+    return userStatus === USER_SESSION_STATUS.ACTIVE;
+  }
+
+  isSubmittedUserStatus(userStatus) {
+    return userStatus === USER_SESSION_STATUS.SUBMITTED;
+  }
+
+  isLeftUserStatus(userStatus) {
+    return userStatus === USER_SESSION_STATUS.LEFT;
+  }
+
+  isDisconnectedUserStatus(userStatus) {
+    return userStatus === USER_SESSION_STATUS.DISCONNECTED;
+  }
+
+  getSessionUser(session, userId) {
+    return session.users.find((user) => user.userId === userId) || null;
+  }
+
+  mapSessionUserRow(user) {
+    return {
+      userId: user.user_id,
+      userStatus: user.user_status,
+      lastActiveAt: user.last_active_at,
+    };
+  }
+
+  buildSessionSnapshot(sessionRow, sessionUsersRows) {
+    return {
+      roomId: sessionRow.room_id,
+      matchId: sessionRow.match_id,
+      questionId: sessionRow.question_id,
+      users: sessionUsersRows.map((user) => this.mapSessionUserRow(user)),
+      status: sessionRow.status,
+      submittedUsers: sessionUsersRows
+        .filter((user) => this.isSubmittedUserStatus(user.user_status))
+        .map((user) => user.user_id),
+      leftUsers: sessionUsersRows
+        .filter((user) => this.isLeftUserStatus(user.user_status))
+        .map((user) => user.user_id),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async hydrateSessionFromDb(roomId) {
+    const sessionRes = await pool.query(
+      `SELECT room_id, match_id, question_id, status
+       FROM sessions
+       WHERE room_id = $1
+       LIMIT 1`,
+      [roomId]
+    );
+
+    const sessionRow = sessionRes.rows[0];
+    if (!sessionRow) {
+      return null;
+    }
+
+    const sessionUsersRes = await pool.query(
+      `SELECT user_id, user_status, last_active_at
+       FROM session_users
+       WHERE room_id = $1`,
+      [roomId]
+    );
+
+    const hydratedSession = this.buildSessionSnapshot(sessionRow, sessionUsersRes.rows);
+
+    this.matchToRoom.set(hydratedSession.matchId, roomId);
+    this.sessions.set(roomId, hydratedSession);
+
+    return hydratedSession;
+  }
+
+  async getPartnerForRoom(roomId, userId) {
+    const partnerRes = await pool.query(
+      `SELECT user_id
+       FROM session_users
+       WHERE room_id = $1
+         AND user_id != $2
+         AND user_status IN ('active', 'submitted', 'disconnected')
+       LIMIT 1`,
+      [roomId, userId]
+    );
+
+    return partnerRes.rows[0]?.user_id || null;
+  }
+
+  async findRejoinableRoomForUser(userId) {
+    const sessionRes = await pool.query(
+      `SELECT
+          s.room_id,
+          s.match_id,
+          s.question_id,
+          s.status,
+          su.user_status,
+          su.last_active_at
+       FROM sessions s
+       JOIN session_users su ON s.room_id = su.room_id
+       WHERE su.user_id = $1
+         AND s.status = 'active'
+         AND su.user_status IN ('active', 'disconnected')
+         AND s.match_id != 'private-room'
+       ORDER BY su.last_active_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    const row = sessionRes.rows[0];
+    if (!row) {
+      return null;
+    }
+
+    const partner = await this.getPartnerForRoom(row.room_id, userId);
+    const lastActive = new Date(row.last_active_at);
+    const diffInMinutes = (Date.now() - lastActive.getTime()) / (1000 * 60);
+    const isStale = diffInMinutes > STALE_TIMEOUT_MINUTES;
+
+    return {
+      roomId: row.room_id,
+      matchId: row.match_id,
+      questionId: row.question_id,
+      status: row.status,
+      userStatus: row.user_status,
+      partner,
+      isStale,
+    };
+  }
+
+  async findActiveRoomIdForUser(userId) {
+    const activeSessionRes = await pool.query(
+      `SELECT s.room_id
+       FROM sessions s
+       JOIN session_users su ON s.room_id = su.room_id
+       WHERE su.user_id = $1
+         AND s.status = 'active'
+         AND su.user_status IN ('active', 'disconnected')
+       ORDER BY su.last_active_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    return activeSessionRes.rows[0]?.room_id || null;
+  }
+
   async startSession({ userId, matchId }) {
     if (!userId || !matchId) {
       throw new Error('userId and matchId are required');
     }
-    const userActiveSessionRes = await pool.query(
-        `SELECT s.room_id, s.question_id, s.status, s.match_id, su.has_submitted, s.updated_at
-         FROM sessions s
-         JOIN session_users su ON s.room_id = su.room_id
-         WHERE su.user_id = $1 
-           AND s.status = 'active'
-           AND s.match_id != 'private-room'
-         LIMIT 1`,
-        [userId]
-    );
 
-    const row = userActiveSessionRes.rows[0];
-
-    if (row && (matchId === "REJOIN_CHECK" || matchId === row.match_id)) {
-        // Calculate if the session is "Stale" (Older than 30 mins)
-        const lastUpdate = new Date(row.updated_at);
-        const diffInMinutes = (new Date().getTime() - lastUpdate.getTime()) / (1000 * 60);
-        const isStale = diffInMinutes > 30;
-
-        const partnerRes = await pool.query(
-            `SELECT user_id FROM session_users WHERE room_id = $1 AND user_id != $2 LIMIT 1`,
-            [row.room_id, userId]
-        );
-
-        return {
-            roomId: row.room_id,
-            questionId: row.question_id,
-            status: row.status,
-            partner: partnerRes.rows[0]?.user_id || 'Partner',
-            reconnected: true,
-            hasSubmitted: row.has_submitted,
-            isStale: isStale // <--- Pass this to the frontend
-        };
-    }
-    // 1 matchId starts 1 session, but 2nd user joining same matchId should reuse existing session (if still active)
     const existingSessionRes = await pool.query(
       `SELECT room_id, question_id, status
        FROM sessions
-       WHERE match_id = $1 AND status = 'active'
+       WHERE match_id = $1
+         AND status = 'active'
        ORDER BY updated_at DESC
        LIMIT 1`,
       [matchId]
     );
 
     const existingSessionRow = existingSessionRes.rows[0];
+
     if (existingSessionRow) {
-      const existingRoomId = existingSessionRow.room_id;
-      const existingSessionUsersRes = await pool.query(
-        `SELECT user_id, has_submitted, has_left, last_active_at
-         FROM session_users
-         WHERE room_id = $1`,
-        [existingRoomId]
-      );
-
-      const existingSession = this.sessions.get(existingRoomId) ?? {
-        roomId: existingRoomId,
-        matchId,
-        questionId: existingSessionRow.question_id,
-        users: existingSessionUsersRes.rows.map((user) => ({
-          userId: user.user_id,
-          hasSubmitted: user.has_submitted,
-          hasLeft: user.has_left,
-          lastActiveAt: user.last_active_at,
-        })),
-        status: existingSessionRow.status,
-        submittedUsers: existingSessionUsersRes.rows
-          .filter((user) => user.has_submitted)
-          .map((user) => user.user_id),
-        leftUsers: existingSessionUsersRes.rows
-          .filter((user) => user.has_left)
-          .map((user) => user.user_id),
-        updatedAt: new Date().toISOString(),
-      };
-
       const client = await pool.connect();
 
       try {
@@ -122,43 +208,64 @@ export class RoomSessionService {
           `INSERT INTO session_users (room_id, user_id)
            VALUES ($1, $2)
            ON CONFLICT (room_id, user_id) DO NOTHING`,
-          [existingSession.roomId, userId]
+          [existingSessionRow.room_id, userId]
+        );
+
+        await client.query(
+          `UPDATE session_users
+           SET user_status = $3,
+               last_active_at = CURRENT_TIMESTAMP
+           WHERE room_id = $1 AND user_id = $2`,
+          [existingSessionRow.room_id, userId, USER_SESSION_STATUS.ACTIVE]
         );
 
         await client.query(
           `UPDATE sessions
            SET updated_at = CURRENT_TIMESTAMP
            WHERE room_id = $1`,
-          [existingSession.roomId]
+          [existingSessionRow.room_id]
+        );
+
+        const sessionUsersRes = await client.query(
+          `SELECT user_id, user_status, last_active_at
+           FROM session_users
+           WHERE room_id = $1`,
+          [existingSessionRow.room_id]
         );
 
         await client.query('COMMIT');
+
+        const existingSession = this.buildSessionSnapshot(
+          {
+            room_id: existingSessionRow.room_id,
+            match_id: matchId,
+            question_id: existingSessionRow.question_id,
+            status: existingSessionRow.status,
+          },
+          sessionUsersRes.rows
+        );
+
+        this.sessions.set(existingSession.roomId, existingSession);
+        this.matchToRoom.set(matchId, existingSession.roomId);
+
+        const partner = await this.getPartnerForRoom(existingSession.roomId, userId);
+
+        return {
+          roomId: existingSession.roomId,
+          questionId: existingSession.questionId,
+          status: existingSession.status,
+          partner,
+          userStatus: USER_SESSION_STATUS.ACTIVE,
+          reused: true,
+        };
       } catch (err) {
         await client.query('ROLLBACK');
         throw err;
       } finally {
         client.release();
       }
-
-      if (!this.hasUser(existingSession, userId)) {
-        existingSession.users.push(this.createSessionUser(userId));
-      }
-
-      existingSession.updatedAt = new Date().toISOString();
-      this.matchToRoom.set(matchId, existingRoomId);
-      this.sessions.set(existingRoomId, existingSession);
-
-      return {
-        roomId: existingSession.roomId,
-        questionId: existingSession.questionId,
-        status: existingSession.status,
-        reused: true,
-      };
     }
 
-    // In a real system, you would look up the match from your match service / DB
-    // and get both users + assigned question from there.
-    // For now, we create a basic session.
     const roomId = this.generateRoomId();
 
     const session = {
@@ -166,14 +273,12 @@ export class RoomSessionService {
       matchId,
       questionId: 'sample-question-id',
       users: [this.createSessionUser(userId)],
-      status: 'active',
+      status: SESSION_STATUS.ACTIVE,
       submittedUsers: [],
       leftUsers: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
-    // Store session in DB
 
     const client = await pool.connect();
 
@@ -182,14 +287,14 @@ export class RoomSessionService {
 
       const sessionRes = await client.query(
         `INSERT INTO sessions (room_id, match_id, question_id, status)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (match_id) DO NOTHING
-        RETURNING room_id, question_id, status`,
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (match_id) DO NOTHING
+         RETURNING room_id, question_id, status`,
         [session.roomId, session.matchId, session.questionId, session.status]
       );
 
-      if (sessionRes.rows.length === 0) { // This user's query lost the race condition
-        const existingSessionRes = await client.query(
+      if (sessionRes.rows.length === 0) {
+        const raceWinnerRes = await client.query(
           `SELECT room_id, question_id, status
            FROM sessions
            WHERE match_id = $1
@@ -197,82 +302,81 @@ export class RoomSessionService {
           [matchId]
         );
 
-        const existingSessionRow = existingSessionRes.rows[0];
+        const raceWinner = raceWinnerRes.rows[0];
 
         await client.query(
           `INSERT INTO session_users (room_id, user_id)
            VALUES ($1, $2)
            ON CONFLICT (room_id, user_id) DO NOTHING`,
-          [existingSessionRow.room_id, userId]
+          [raceWinner.room_id, userId]
+        );
+
+        await client.query(
+          `UPDATE session_users
+           SET user_status = $3,
+               last_active_at = CURRENT_TIMESTAMP
+           WHERE room_id = $1 AND user_id = $2`,
+          [raceWinner.room_id, userId, USER_SESSION_STATUS.ACTIVE]
         );
 
         await client.query(
           `UPDATE sessions
            SET updated_at = CURRENT_TIMESTAMP
            WHERE room_id = $1`,
-          [existingSessionRow.room_id]
+          [raceWinner.room_id]
         );
 
-        const existingSessionUsersRes = await client.query(
-          `SELECT user_id, has_submitted, has_left, last_active_at
+        const sessionUsersRes = await client.query(
+          `SELECT user_id, user_status, last_active_at
            FROM session_users
            WHERE room_id = $1`,
-          [existingSessionRow.room_id]
+          [raceWinner.room_id]
         );
 
         await client.query('COMMIT');
 
-        // In memory session
-        const existingSession = {
-          roomId: existingSessionRow.room_id,
-          matchId,
-          questionId: existingSessionRow.question_id,
-          users: existingSessionUsersRes.rows.map((user) => ({
-            userId: user.user_id,
-            hasSubmitted: user.has_submitted,
-            hasLeft: user.has_left,
-            lastActiveAt: user.last_active_at,
-          })),
-          status: existingSessionRow.status,
-          submittedUsers: existingSessionUsersRes.rows
-            .filter((user) => user.has_submitted)
-            .map((user) => user.user_id),
-          leftUsers: existingSessionUsersRes.rows
-            .filter((user) => user.has_left)
-            .map((user) => user.user_id),
-          updatedAt: new Date().toISOString(),
-        };
+        const existingSession = this.buildSessionSnapshot(
+          {
+            room_id: raceWinner.room_id,
+            match_id: matchId,
+            question_id: raceWinner.question_id,
+            status: raceWinner.status,
+          },
+          sessionUsersRes.rows
+        );
 
         this.sessions.set(existingSession.roomId, existingSession);
         this.matchToRoom.set(matchId, existingSession.roomId);
+
+        const partner = await this.getPartnerForRoom(existingSession.roomId, userId);
 
         return {
           roomId: existingSession.roomId,
           questionId: existingSession.questionId,
           status: existingSession.status,
+          partner,
+          userStatus: USER_SESSION_STATUS.ACTIVE,
           reused: true,
         };
       }
 
       await client.query(
-        `INSERT INTO session_users (room_id, user_id)
-        VALUES ($1, $2)`,
-        [session.roomId, userId]
+        `INSERT INTO session_users (room_id, user_id, user_status)
+         VALUES ($1, $2, $3)`,
+        [session.roomId, userId, USER_SESSION_STATUS.ACTIVE]
       );
 
       await client.query('COMMIT');
 
-      // Store session in memory
       this.sessions.set(roomId, session);
       this.matchToRoom.set(matchId, roomId);
 
-      const savedSession = sessionRes.rows[0];
-
-
       return {
-        roomId: savedSession.room_id,
-        questionId: savedSession.question_id,
-        status: savedSession.status,
+        roomId,
+        questionId: session.questionId,
+        status: session.status,
+        partner: null,
+        userStatus: USER_SESSION_STATUS.ACTIVE,
         reused: false,
       };
     } catch (err) {
@@ -282,14 +386,16 @@ export class RoomSessionService {
       client.release();
     }
   }
-  
 
   async reconnectSession({ userId, roomId }) {
     if (!userId || !roomId) {
       throw new Error('userId and roomId are required');
     }
 
-    const session = this.sessions.get(roomId);
+    let session = this.sessions.get(roomId);
+    if (!session) {
+      session = await this.hydrateSessionFromDb(roomId);
+    }
 
     if (!session) {
       return {
@@ -298,42 +404,105 @@ export class RoomSessionService {
       };
     }
 
-    if (session.status === 'closed') {
+    if (session.status === SESSION_STATUS.CLOSED) {
       return {
         success: false,
         message: 'Session is closed',
       };
     }
 
-    // MVP: allow rejoin if user was already in session, or add them if missing
-    if (!this.hasUser(session, userId)) {
-      session.users.push(this.createSessionUser(userId));
+    const sessionUser = this.getSessionUser(session, userId);
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User is not part of this session',
+      };
     }
 
-    // If user had left before, remove from leftUsers
-    session.leftUsers = session.leftUsers.filter((id) => id !== userId);
-    session.updatedAt = new Date().toISOString();
+    if (this.isLeftUserStatus(sessionUser.userStatus)) {
+      return {
+        success: false,
+        message: 'Cannot reconnect after leaving this session',
+      };
+    }
 
-    this.sessions.set(roomId, session);
+    if (this.isSubmittedUserStatus(sessionUser.userStatus)) {
+      return {
+        success: false,
+        message: 'User already submitted this session',
+      };
+    }
+
+    if (!(this.isActiveUserStatus(sessionUser.userStatus) || this.isDisconnectedUserStatus(sessionUser.userStatus))) {
+      return {
+        success: false,
+        message: 'User is not rejoinable',
+      };
+    }
+
+    await pool.query(
+      `UPDATE session_users
+       SET user_status = $3,
+           last_active_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1 AND user_id = $2`,
+      [roomId, userId, USER_SESSION_STATUS.ACTIVE]
+    );
+
+    await pool.query(
+      `UPDATE sessions
+       SET updated_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1`,
+      [roomId]
+    );
+
+    const sessionUsersRes = await pool.query(
+      `SELECT user_id, user_status, last_active_at
+       FROM session_users
+       WHERE room_id = $1`,
+      [roomId]
+    );
+
+    const nextSession = this.buildSessionSnapshot(
+      {
+        room_id: session.roomId,
+        match_id: session.matchId,
+        question_id: session.questionId,
+        status: session.status,
+      },
+      sessionUsersRes.rows
+    );
+
+    this.sessions.set(roomId, nextSession);
+
+    const partner = await this.getPartnerForRoom(roomId, userId);
 
     return {
       success: true,
-      roomId: session.roomId,
-      questionId: session.questionId,
-      status: session.status,
-      session,
+      roomId,
+      questionId: nextSession.questionId,
+      status: nextSession.status,
+      partner,
+      session: nextSession,
     };
   }
 
-  async leaveSession({ userId, roomId }) {
-    if (!userId || !roomId) {
-      throw new Error('userId and roomId are required');
+  async disconnectSession({ userId, roomId }) {
+    if (!userId) {
+      throw new Error('userId is required');
     }
-    await pool.query(
-      `UPDATE session_users SET has_left = TRUE WHERE room_id = $1 AND user_id = $2`,
-      [roomId, userId]
-    );
-    const session = this.sessions.get(roomId);
+
+    const targetRoomId = roomId || await this.findActiveRoomIdForUser(userId);
+    if (!targetRoomId) {
+      return {
+        success: false,
+        message: 'Session not found',
+      };
+    }
+
+    let session = this.sessions.get(targetRoomId);
+    if (!session) {
+      session = await this.hydrateSessionFromDb(targetRoomId);
+    }
 
     if (!session) {
       return {
@@ -342,38 +511,156 @@ export class RoomSessionService {
       };
     }
 
-    if (!session.leftUsers.includes(userId)) {
-      session.leftUsers.push(userId);
+    const sessionUser = this.getSessionUser(session, userId);
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User is not part of this session',
+      };
     }
 
-    session.updatedAt = new Date().toISOString();
-
-    // Example close rule:
-    // if all known users have left, close session
-    const allUsersLeft =
-      session.users.length > 0 &&
-      session.users.every((user) => session.leftUsers.includes(user.userId));
-
-    if (allUsersLeft) {
-      session.status = 'closed';
-      await pool.query(`UPDATE sessions SET status = 'closed' WHERE room_id = $1`, [roomId]);
+    if (this.isLeftUserStatus(sessionUser.userStatus)) {
+      return {
+        success: false,
+        message: 'Cannot disconnect after leaving this session',
+      };
     }
-    this.sessions.set(roomId, session);
+
+    if (this.isSubmittedUserStatus(sessionUser.userStatus)) {
+      return {
+        success: false,
+        message: 'Submitted users do not need disconnect',
+      };
+    }
+
+    await pool.query(
+      `UPDATE session_users
+       SET user_status = $3,
+           last_active_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1 AND user_id = $2`,
+      [targetRoomId, userId, USER_SESSION_STATUS.DISCONNECTED]
+    );
+
+    await pool.query(
+      `UPDATE sessions
+       SET updated_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1`,
+      [targetRoomId]
+    );
+
+    const sessionUsersRes = await pool.query(
+      `SELECT user_id, user_status, last_active_at
+       FROM session_users
+       WHERE room_id = $1`,
+      [targetRoomId]
+    );
+
+    const nextSession = this.buildSessionSnapshot(
+      {
+        room_id: session.roomId,
+        match_id: session.matchId,
+        question_id: session.questionId,
+        status: session.status,
+      },
+      sessionUsersRes.rows
+    );
+
+    this.sessions.set(targetRoomId, nextSession);
 
     return {
       success: true,
+      roomId: targetRoomId,
+      message: 'User disconnected successfully',
+      status: nextSession.status,
+      session: nextSession,
+    };
+  }
+
+  async leaveSession({ userId, roomId }) {
+    if (!userId) {
+      throw new Error('userId is required');
+    }
+
+    const targetRoomId = roomId || await this.findActiveRoomIdForUser(userId);
+    if (!targetRoomId) {
+      return {
+        success: false,
+        message: 'Session not found',
+      };
+    }
+
+    let session = this.sessions.get(targetRoomId);
+    if (!session) {
+      session = await this.hydrateSessionFromDb(targetRoomId);
+    }
+
+    if (!session) {
+      return {
+        success: false,
+        message: 'Session not found',
+      };
+    }
+
+    await pool.query(
+      `UPDATE session_users
+       SET user_status = $3,
+           last_active_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1 AND user_id = $2`,
+      [targetRoomId, userId, USER_SESSION_STATUS.LEFT]
+    );
+
+    const sessionUsersRes = await pool.query(
+      `SELECT user_id, user_status, last_active_at
+       FROM session_users
+       WHERE room_id = $1`,
+      [targetRoomId]
+    );
+
+    const allUsersDoneOrGone =
+      sessionUsersRes.rows.length > 0 &&
+      sessionUsersRes.rows.every(
+        (user) =>
+          this.isLeftUserStatus(user.user_status) ||
+          this.isSubmittedUserStatus(user.user_status)
+      );
+
+    const nextStatus = allUsersDoneOrGone ? SESSION_STATUS.CLOSED : session.status;
+
+    await pool.query(
+      `UPDATE sessions
+       SET status = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1`,
+      [targetRoomId, nextStatus]
+    );
+
+    const nextSession = this.buildSessionSnapshot(
+      {
+        room_id: session.roomId,
+        match_id: session.matchId,
+        question_id: session.questionId,
+        status: nextStatus,
+      },
+      sessionUsersRes.rows
+    );
+
+    if (nextStatus === SESSION_STATUS.CLOSED) {
+      this.sessions.delete(targetRoomId);
+      this.matchToRoom.delete(nextSession.matchId);
+    } else {
+      this.sessions.set(targetRoomId, nextSession);
+    }
+
+    return {
+      success: true,
+      roomId: targetRoomId,
       message: 'User left session successfully',
-      status: session.status,
-      session,
+      status: nextStatus,
+      session: nextStatus === SESSION_STATUS.CLOSED ? null : nextSession,
     };
   }
 
   async submitSession({ userId, roomId, code }) {
-    // verify room's session is active, user is part of session, etc.
-    // verify code is valid (not empty) else store as "Missing Code"
-    // end room session for both users
-    // "you have submitted" notif for user a, "your partner has submitted" notif for user b (if still connected)
-
     if (!userId || !roomId) {
       throw new Error('userId and roomId are required');
     }
@@ -383,7 +670,6 @@ export class RoomSessionService {
     try {
       await client.query('BEGIN');
 
-      // Verify session exists and is active
       const sessionRes = await client.query(
         `SELECT room_id, match_id, question_id, status
          FROM sessions
@@ -393,23 +679,17 @@ export class RoomSessionService {
       );
 
       const sessionRow = sessionRes.rows[0];
+
       if (!sessionRow) {
         await client.query('ROLLBACK');
-        return {
-          success: false,
-          message: 'Session not found',
-        };
+        return { success: false, message: 'Session not found' };
       }
 
-      if (sessionRow.status === 'closed') {
+      if (sessionRow.status === SESSION_STATUS.CLOSED) {
         await client.query('ROLLBACK');
-        return {
-          success: false,
-          message: 'Session is already closed',
-        };
+        return { success: false, message: 'Session is already closed' };
       }
 
-      // Verify submitting user is part of session
       await client.query(
         `INSERT INTO session_users (room_id, user_id)
          VALUES ($1, $2)
@@ -419,13 +699,12 @@ export class RoomSessionService {
 
       await client.query(
         `UPDATE session_users
-         SET has_submitted = TRUE,
+         SET user_status = $3,
              last_active_at = CURRENT_TIMESTAMP
          WHERE room_id = $1 AND user_id = $2`,
-        [roomId, userId]
+        [roomId, userId, USER_SESSION_STATUS.SUBMITTED]
       );
 
-      // Insert submission record, update to lastest code if submission for room id exists
       await client.query(
         `INSERT INTO submissions (room_id, submitted_by_user_id, code)
          VALUES ($1, $2, $3)
@@ -438,18 +717,17 @@ export class RoomSessionService {
       );
 
       const sessionUsersRes = await client.query(
-        `SELECT user_id, has_submitted, has_left, last_active_at
+        `SELECT user_id, user_status, last_active_at
          FROM session_users
          WHERE room_id = $1`,
         [roomId]
       );
 
-      // Close session if both users have submitted
       const allUsersSubmitted =
         sessionUsersRes.rows.length > 0 &&
-        sessionUsersRes.rows.every((user) => user.has_submitted);
+        sessionUsersRes.rows.every((user) => this.isSubmittedUserStatus(user.user_status));
 
-      const nextStatus = allUsersSubmitted ? 'closed' : sessionRow.status;
+      const nextStatus = allUsersSubmitted ? SESSION_STATUS.CLOSED : sessionRow.status;
 
       await client.query(
         `UPDATE sessions
@@ -461,36 +739,29 @@ export class RoomSessionService {
 
       await client.query('COMMIT');
 
-      // Update in-memory session
-      const session = {
-        roomId: sessionRow.room_id,
-        matchId: sessionRow.match_id,
-        questionId: sessionRow.question_id,
-        users: sessionUsersRes.rows.map((user) => ({
-          userId: user.user_id,
-          hasSubmitted: user.has_submitted,
-          hasLeft: user.has_left,
-          lastActiveAt: user.last_active_at,
-        })),
-        status: nextStatus,
-        submittedUsers: sessionUsersRes.rows
-          .filter((user) => user.has_submitted)
-          .map((user) => user.user_id),
-        leftUsers: sessionUsersRes.rows
-          .filter((user) => user.has_left)
-          .map((user) => user.user_id),
-        lastSubmittedCode: code ?? 'Missing Code',
-        updatedAt: new Date().toISOString(),
-      };
+      if (nextStatus === SESSION_STATUS.CLOSED) {
+        this.sessions.delete(roomId);
+        this.matchToRoom.delete(sessionRow.match_id);
+      } else {
+        const nextSession = this.buildSessionSnapshot(
+          {
+            room_id: sessionRow.room_id,
+            match_id: sessionRow.match_id,
+            question_id: sessionRow.question_id,
+            status: nextStatus,
+          },
+          sessionUsersRes.rows
+        );
 
-      this.matchToRoom.set(session.matchId, roomId);
-      this.sessions.set(roomId, session);
+        this.sessions.set(roomId, nextSession);
+        this.matchToRoom.set(sessionRow.match_id, roomId);
+      }
 
       return {
         success: true,
         message: 'Session submitted successfully',
-        status: session.status,
-        session,
+        status: nextStatus,
+        session: nextStatus === SESSION_STATUS.CLOSED ? null : this.sessions.get(roomId),
       };
     } catch (err) {
       await client.query('ROLLBACK');
@@ -502,57 +773,9 @@ export class RoomSessionService {
 
   async getSessionByRoomId(roomId) {
     const session = this.sessions.get(roomId);
-
     if (session) {
       return session;
     }
-
-    const sessionRes = await pool.query(
-      `SELECT room_id, match_id, question_id, status
-       FROM sessions
-       WHERE room_id = $1
-       LIMIT 1`,
-      [roomId]
-    );
-
-    const sessionRow = sessionRes.rows[0];
-    if (!sessionRow) {
-      return {
-        success: false,
-        message: 'Session not found',
-      } || null;
-    }
-
-    const sessionUsersRes = await pool.query(
-      `SELECT user_id, has_submitted, has_left, last_active_at
-       FROM session_users
-       WHERE room_id = $1`,
-      [roomId]
-    );
-
-    const hydratedSession = {
-      roomId: sessionRow.room_id,
-      matchId: sessionRow.match_id,
-      questionId: sessionRow.question_id,
-      users: sessionUsersRes.rows.map((user) => ({
-        userId: user.user_id,
-        hasSubmitted: user.has_submitted,
-        hasLeft: user.has_left,
-        lastActiveAt: user.last_active_at,
-      })),
-      status: sessionRow.status,
-      submittedUsers: sessionUsersRes.rows
-        .filter((user) => user.has_submitted)
-        .map((user) => user.user_id),
-      leftUsers: sessionUsersRes.rows
-        .filter((user) => user.has_left)
-        .map((user) => user.user_id),
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.matchToRoom.set(hydratedSession.matchId, roomId);
-    this.sessions.set(roomId, hydratedSession);
-
-    return hydratedSession;
+    return this.hydrateSessionFromDb(roomId);
   }
 }
