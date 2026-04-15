@@ -5,6 +5,11 @@
     "@google/generative-ai": "^0.24.1",
     "ai": "^6.0.146",
     "dotenv": "^17.4.0",
-    "express-rate-limit": "^8.3.2"
+    "express-rate-limit": "^8.3.2",
+    "node-mocks-http": "^1.17.2"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "supertest": "^7.2.2"
   }
 }

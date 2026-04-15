@@ -41,8 +41,13 @@ function App() {
 
             dispatch(
               initialiseCollab({
+                questionTopic: parsed.questionTopic ?? null,
+                questionDifficulty: parsed.questionDifficulty ?? null,
+                programmingLanguage: parsed.programmingLanguage ?? null,
                 roomId: parsed.roomId ?? null,
                 partner: parsed.partner ?? null,
+                matchId: parsed.matchId ?? null,
+                isStale: parsed.isStale ?? false,
                 questionId: parsed.questionId ?? null,
                 questionTitle: parsed.questionTitle ?? null,
                 questionDescription: parsed.questionDescription ?? null,

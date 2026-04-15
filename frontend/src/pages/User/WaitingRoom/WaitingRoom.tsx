@@ -57,6 +57,28 @@ export default function WaitingRoom() {
  
   const username: string = authValue.username;
 
+  const persistCollabSession = (overrides: Record<string, unknown> = {}) => {
+    localStorage.setItem(
+      'collabSession',
+      JSON.stringify({
+        username: authValue.username,
+        role: authValue.role,
+        questionTopic: collabValue.questionTopic ?? null,
+        questionDifficulty: collabValue.questionDifficulty ?? null,
+        programmingLanguage: collabValue.programmingLanguage ?? null,
+        roomId: collabValue.roomId ?? null,
+        partner: collabValue.partner ?? null,
+        matchId: collabValue.matchId ?? null,
+        isStale: collabValue.isStale ?? false,
+        questionId: collabValue.questionId ?? null,
+        questionTitle: collabValue.questionTitle ?? null,
+        questionDescription: collabValue.questionDescription ?? null,
+        questionStarterCode: collabValue.questionStarterCode ?? null,
+        ...overrides,
+      })
+    );
+  };
+
   const runMatchmakingSequence = async (signal: AbortSignal) => {
     try {
       setHasExistingSession(false);
@@ -133,19 +155,16 @@ export default function WaitingRoom() {
             })
           );
 
-          localStorage.setItem(
-            'collabSession',
-            JSON.stringify({
-              username: authValue.username,
-              role: authValue.role,
-              roomId: existingSession.roomId,
-              partner: existingSession.partner ?? null,
-              questionId: collabValue.questionId,
-              questionTitle: collabValue.questionTitle,
-              questionDescription: collabValue.questionDescription,
-              questionStarterCode: collabValue.questionStarterCode,
-            })
-          );
+          persistCollabSession({
+            roomId: existingSession.roomId,
+            partner: existingSession.partner ?? null,
+            matchId: existingSession.matchId ?? null,
+            isStale: !!existingSession.isStale,
+            questionId: existingSession.questionId ?? null,
+            questionTitle: existingSession.questionTitle ?? null,
+            questionDescription: existingSession.questionDescription ?? null,
+            questionStarterCode: existingSession.questionStarterCode ?? null,
+          });
 
           if (existingSession.isStale) {
             setPartnerStatus(statusMessage.OPTIONAL_REJOIN(existingSession.partner ?? undefined));
@@ -172,6 +191,10 @@ export default function WaitingRoom() {
   const handleContinueClick = async () => {
     try {
       let finalRoomId = collabValue.roomId;
+      let questionId = collabValue.questionId;
+      let questionTitle = collabValue.questionTitle;
+      let questionDescription = collabValue.questionDescription;
+      let questionStarterCode = collabValue.questionStarterCode;
 
       if (!finalRoomId) {
         const matchId = collabValue.matchId;
@@ -182,22 +205,30 @@ export default function WaitingRoom() {
 
         const session = await startRoomSession(username, matchId, collabValue.questionId, collabValue.questionTitle, collabValue.questionDescription, collabValue.questionStarterCode);
         finalRoomId = session.roomId;
+        questionId = session.questionId ?? questionId;
+        questionTitle = session.questionTitle ?? questionTitle;
+        questionDescription = session.questionDescription ?? questionDescription;
+        questionStarterCode = session.questionStarterCode ?? questionStarterCode;
 
-        dispatch(setRoomId(finalRoomId));
-        localStorage.setItem(
-          'collabSession',
-          JSON.stringify({
-            username: authValue.username,
-            role: authValue.role,
+        dispatch(
+          initialiseCollab({
             roomId: finalRoomId,
-            partner: collabValue.partner,
-            questionId: collabValue.questionId,
-            questionTitle: collabValue.questionTitle,
-            questionDescription: collabValue.questionDescription,
-            questionStarterCode: collabValue.questionStarterCode,
-        
+            questionId,
+            questionTitle,
+            questionDescription,
+            questionStarterCode,
           })
         );
+        persistCollabSession({
+          roomId: finalRoomId,
+          partner: collabValue.partner ?? null,
+          matchId,
+          isStale: false,
+          questionId,
+          questionTitle,
+          questionDescription,
+          questionStarterCode,
+        });
       }
 
       if (finalRoomId) {
@@ -214,6 +245,10 @@ export default function WaitingRoom() {
     try {
       let finalRoomId = collabValue.roomId;
       let partner = collabValue.partner;
+      let questionId = collabValue.questionId;
+      let questionTitle = collabValue.questionTitle;
+      let questionDescription = collabValue.questionDescription;
+      let questionStarterCode = collabValue.questionStarterCode;
 
       if (!finalRoomId) {
         const existingSession = await getRejoinableRoomSession(username);
@@ -224,6 +259,10 @@ export default function WaitingRoom() {
 
         finalRoomId = existingSession.roomId;
         partner = existingSession.partner ?? partner;
+        questionId = existingSession.questionId ?? questionId;
+        questionTitle = existingSession.questionTitle ?? questionTitle;
+        questionDescription = existingSession.questionDescription ?? questionDescription;
+        questionStarterCode = existingSession.questionStarterCode ?? questionStarterCode;
       }
 
       const session = await reconnectRoomSession(username, finalRoomId);
@@ -233,28 +272,33 @@ export default function WaitingRoom() {
         return;
       }
 
+      questionId = session.questionId ?? questionId;
+      questionTitle = session.questionTitle ?? questionTitle;
+      questionDescription = session.questionDescription ?? questionDescription;
+      questionStarterCode = session.questionStarterCode ?? questionStarterCode;
+
       dispatch(
         initialiseCollab({
           roomId: finalRoomId,
           partner: session.partner ?? partner ?? null,
+          questionId,
+          questionTitle,
+          questionDescription,
+          questionStarterCode,
           isStale: false,
         })
       );
 
-      // store question id, question title, question description
-      localStorage.setItem(
-        'collabSession',
-        JSON.stringify({
-          username: authValue.username,
-          role: authValue.role,
-          roomId: finalRoomId,
-          partner: session.partner ?? partner ?? null,
-          questionId: collabValue.questionId,
-          questionTitle: collabValue.questionTitle,
-          questionDescription: collabValue.questionDescription,
-          questionStarterCode: collabValue.questionStarterCode,
-        })
-      );
+      persistCollabSession({
+        roomId: finalRoomId,
+        partner: session.partner ?? partner ?? null,
+        matchId: collabValue.matchId ?? null,
+        isStale: false,
+        questionId,
+        questionTitle,
+        questionDescription,
+        questionStarterCode,
+      });
 
       navigate('/collaboration');
     } catch (err) {

@@ -348,6 +348,7 @@ async function releaseQuestionLock(id, adminId) {
     return { success: res.rowCount > 0 };
 }
 module.exports = {
+    checkDuplicateTitle,
   createQuestion,
   getAllQuestions,
   getQuestionById,

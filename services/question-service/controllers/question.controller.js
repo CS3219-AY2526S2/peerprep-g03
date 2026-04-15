@@ -108,7 +108,7 @@ const QuestionController = {
         return res.status(409).json({ error: error.message });
       }
       if (error.message.includes("lock")) {
-        return res.status(403).json({ error: error.message });
+        return res.status(409).json({ error: error.message });
       }
       res.status(500).json({ error: error.message });
     }

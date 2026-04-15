@@ -83,9 +83,13 @@ Open the URL shown in your terminal (usually `http://localhost:5173`).
 ```bash
 cd ..
 docker compose down
-docker compose up -d --build collab-service-rooms
-
 docker compose up --build
+```
+
+other commands
+```bash
+docker compose up -d --build collab-service-rooms
+docker restart collab-service-websocket
 ```
 
 ---
@@ -113,6 +117,22 @@ To seed questions:
 ```bash
 docker exec -it question-service node scripts/seedQuestions.mjs
 ```
+
+## Backend Unit Tests
+
+service-names
+- user-service
+- question-service
+- match-service
+- collab-service-rooms
+- ai-service
+
+```bash
+cd service
+cd <service-name>
+npm test
+```
+
 ---
 
 ## 🧩 Services Breakdown
@@ -147,14 +167,16 @@ docker exec -it question-service node scripts/seedQuestions.mjs
 
 #### Collab Rooms (`3002`)
 
-* Session metadata
-* History tracking
-* PostgreSQL-backed
+* Session metadata including question details
+* Session users metadata for user active, disconnected, left, submitted
+* Submission History
+
 
 #### Collab WebSocket (`3012`)
 
 * Real-time code syncing
 * WebSocket-based communication
+* Document Persistence with PostgreSQL
 
 ---
 
