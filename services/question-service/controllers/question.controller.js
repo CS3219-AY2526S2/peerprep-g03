@@ -68,6 +68,26 @@ const QuestionController = {
     }
   },
 
+  getQuestionDetailUser: async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Simply fetch the question by ID
+    const question = await QuestionModel.getQuestionByIdUser(id);
+
+    // 2. Handle 404 if the question doesn't exist or is deleted
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" });
+    }
+
+    // 3. Return the data
+    res.status(200).json(question);
+  } catch (error) {
+    // 4. Standard error handling (no more 409 Conflict check needed)
+    res.status(500).json({ error: error.message });
+  }
+},
+
   updateQuestion: async (req, res) => {
     try {
       const { id } = req.params;
