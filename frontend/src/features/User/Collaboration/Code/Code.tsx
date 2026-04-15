@@ -181,7 +181,7 @@ const handleQuitClick = async () => {
     } finally {
         // ALWAYS clean up resources and redirect, even if the API call fails
         cleanupCollabResources();
-        dispatch(reset()); // Clears partner info, roomId, etc. in Redux
+        //dispatch(reset()); // Clears partner info, roomId, etc. in Redux
         navigate('/start');
     }
 };

@@ -99,6 +99,7 @@ export default function WaitingRoom() {
 
                     setHasExistingSession(true);
                     setHasUserSubmittedExisting(isLockLifted);
+                    setIsMatched(true);
 
                     dispatch(initialiseCollab({
                         roomId: checkSession.roomId,
@@ -107,7 +108,6 @@ export default function WaitingRoom() {
                     }));
 
                     if (!isLockLifted) {
-                        setIsMatched(true);
                         setPartnerStatus(statusMessage.EXISTING_SESSION(checkSession.partner || 'Missing Partner Info'));
                     } else {
                         // Soft Lock: DO NOT call matchmaking automatically
@@ -166,62 +166,31 @@ export default function WaitingRoom() {
     };
 
     const handleRejoinClick = async () => {
-
-        //existing room
         try {
-            let finalRoomId = collabValue.roomId;
-            console.log('Attempting to rejoin session with roomId:', finalRoomId, 'partnerstatus: ', partnerStatus);
-            
-            if (!finalRoomId) {
-                // No existing room
-                console.log('No active session found, attempting to start new session with matchId:', collabValue.matchId);
-                
-                if (partnerStatus.includes("Partner found")) {
-                    console.warn('Partner found but no active session. This may indicate a stale session or an error in session management.');
-                }
-
-                const matchId = collabValue.matchId;
-                if (!matchId) {
-                    console.error('No matchId available for reconnect');
-                    return;
-                }
-                
-                handleContinueClick();
-                return;
-
-                //const matchId = collabValue.matchId;
-                if (matchId) {
-                    const session = await reconnectRoomSession(username, matchId);
-                    finalRoomId = session.roomId;
-
-                    
-                    dispatch(setRoomId(session.roomId));
-                    localStorage.setItem(
-                        'collabSession',
-                        JSON.stringify({
-                        username: authValue.username,
-                        role: authValue.role,
-                        roomId: session.roomId,
+            const existingSession =
+                collabValue.roomId
+                    ? {
+                        roomId: collabValue.roomId,
                         partner: collabValue.partner,
-                        question: collabValue.question,
-                        })
-                    ) 
+                        status: 'active',
+                    }
+                    : await startRoomSession(username, "REJOIN_CHECK");
 
-                    const savedSession = localStorage.getItem('collabSession');
-                    console.log('Saved session in localStorage:', savedSession);
+            if (!existingSession?.roomId || existingSession.status !== 'active') {
+                console.error('No active session found for reconnect');
+                return;
+            }
 
-                }
-            } 
-            
-            // if (finalRoomId) {
+            console.log('Attempting to rejoin session with roomId:', existingSession.roomId, 'partnerstatus: ', partnerStatus);
 
-            const session = await reconnectRoomSession(username, finalRoomId);
-            finalRoomId = session.roomId;
+            const session = await reconnectRoomSession(username, existingSession.roomId);
+            const finalRoomId = session.roomId ?? existingSession.roomId;
             console.log('Existing session found with roomId:', finalRoomId);
 
             dispatch(initialiseCollab({
                 roomId: finalRoomId,
-                partner: session.partner ?? collabValue.partner,
+                partner: session.partner ?? existingSession.partner ?? collabValue.partner,
+                isStale: false,
             }));
 
             localStorage.setItem(
@@ -230,7 +199,7 @@ export default function WaitingRoom() {
                     username: authValue.username,
                     role: authValue.role,
                     roomId: finalRoomId,
-                    partner: session.partner ?? collabValue.partner,
+                    partner: session.partner ?? existingSession.partner ?? collabValue.partner,
                     question: collabValue.question,
                 })
             );
@@ -301,7 +270,6 @@ export default function WaitingRoom() {
                              </p>
                              {hasUserSubmittedExisting && (
                                 <div className="mt-4 flex gap-2 justify-center">
-                                    <Button label="Rejoin Previous" variant="outlined" onClick={handleRejoinClick} />
                                     <Button label="Ignore & Find New" onClick={handleIgnoreSession} />
                                 </div>
                              )}
@@ -320,13 +288,11 @@ export default function WaitingRoom() {
                     
                     <div className="flex justify-center p-4 gap-x-15">
                         <Button label="Back" onClick={handleBackClick} />
-                        {(!hasUserSubmittedExisting || !hasExistingSession) && (
-                            <Button 
-                                label={hasExistingSession ? "Rejoin & Finish" : "Continue"} 
-                                onClick={hasExistingSession ? handleRejoinClick : handleContinueClick}
-                                disabled={!isMatched || partnerStatus === statusMessage.UNEXPECTED_ERROR() || partnerStatus === statusMessage.FINDING_PARTNER()}
-                            />
-                        )}
+                        <Button 
+                            label={hasExistingSession ? "Rejoin & Finish" : "Continue"} 
+                            onClick={hasExistingSession ? handleRejoinClick : handleContinueClick}
+                            disabled={!hasExistingSession && (!isMatched || partnerStatus === statusMessage.UNEXPECTED_ERROR() || partnerStatus === statusMessage.FINDING_PARTNER())}
+                        />
                     </div>
                 </div>
             </div>
