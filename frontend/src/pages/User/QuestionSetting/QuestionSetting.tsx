@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header, PageTitle, DropDown, Button, ErrorMessage, convertEnumsToDropDownOption, Dialog } from '../../../components';
 import { getBlankFieldError } from '../../../commons'
 import { useSelector, useDispatch } from 'react-redux';
-import { initialiseCollab, setRoomId } from '../../../features/User/Collaboration/collaborationSlice';
+import { initialiseCollab } from '../../../features/User/Collaboration/collaborationSlice';
 import { QuestionTopic, ProgrammingLanguage, QuestionDifficultyMatching } from '../../../models';
 import { getQuestionUser } from '../../../services/Questions';
 import { startRoomSession } from '../../../services/Collaboration';
@@ -28,16 +28,8 @@ export default function QuestionSetting() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     const isFormIncomplete = !formData.questionDifficulty || !formData.programmingLanguage || !formData.questionTopic;
-
-
-    const {
-        value: collabValue,
-        stateStatus: collabStatus
-    } = useSelector((state) => state.collaboration);
-
     const {
         value: authValue,
-        stateStatus: authStatus
     } = useSelector((state) => state.authentication);
 
     const username: string = authValue.username
@@ -91,6 +83,33 @@ export default function QuestionSetting() {
     };
 
     const handleJustMeClick = async () => {
+        dispatch(initialiseCollab({
+            questionTopic: formData.questionTopic,
+            questionDifficulty: formData.questionDifficulty,
+            programmingLanguage: formData.programmingLanguage,
+        }));
+
+        try {
+            const existingSession = await startRoomSession(username, 'REJOIN_CHECK');
+
+            if (
+                existingSession?.roomId &&
+                existingSession.status === 'active' &&
+                existingSession.userStatus !== 'submitted'
+            ) {
+                dispatch(initialiseCollab({
+                    roomId: existingSession.roomId,
+                    partner: existingSession.partner ?? null,
+                    matchId: null,
+                    isStale: existingSession.isStale ?? false,
+                }));
+                navigate(`/waiting-room`);
+                return;
+            }
+        } catch (err) {
+            console.error('Failed to check existing room session', err);
+        }
+
         const questionData = await saveSetting();
         if (questionData) {
             try {
@@ -100,7 +119,12 @@ export default function QuestionSetting() {
                 // TODO: Create room and set partner in state.collaboration or via a separate room
                 const session = await startRoomSession(username, matchId);            
     
-                dispatch(setRoomId(session.roomId));
+                dispatch(initialiseCollab({
+                    roomId: session.roomId,
+                    partner: null,
+                    matchId: null,
+                    isStale: false,
+                }));
 
                 localStorage.setItem(
                     'collabSession',
