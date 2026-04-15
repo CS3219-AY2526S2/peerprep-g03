@@ -5,11 +5,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import { reset } from '../../../../features/User/Collaboration/collaborationSlice';
 
 const initialStateValue = {
-    questionTitle: null,
     questionTopic: null,
     questionDifficulty: null,
     programmingLanguage: null,
-    question: null,
+    questionTitle: null,
+    questionId: null,
+    questionDescription: null,
+    questionStarterCode: null,
     partner: null,
     matchId: null,
     roomId: null,

@@ -4,7 +4,7 @@ import { Button } from '../../../../components';
 import { darkBlue } from '../../../../commons';
 import { useSelector, useDispatch } from 'react-redux';
 import { reset } from '../../../../features/User/Collaboration/collaborationSlice';
-import { postAttempt } from '../../../../services/Attempts';
+//import { postAttempt } from '../../../../services/Attempts';
 import { useCompletion } from '@ai-sdk/react';
 
 import Editor, { OnMount } from '@monaco-editor/react';
@@ -35,7 +35,11 @@ export function Code() {
   // retrieve question id, question title, question description, starter code from collab state
   const partner = collabValue.partner ?? '';
   const roomId = collabValue.roomId ?? 'private-room';
-  const question = collabValue.question ?? '';
+  const questionId = collabValue.questionId ?? '';
+  const questionTitle = collabValue.questionTitle ?? '';
+  const questionDescription = collabValue.questionDescription ?? '';
+  const programmingLanguage = collabValue.programmingLanguage ?? '';
+  const questionStarterCode = collabValue.questionStarterCode ?? '';
   const username = authValue.username ?? '';
 
   const havePartner = !!partner;
@@ -155,13 +159,13 @@ export function Code() {
         await submitRoomSession(username, roomId, sharedDocument);
       }
 
-      await postAttempt(
-        timestamp,
-        username,
-        partner,
-        question,
-        sharedDocument
-      );
+      // await postAttempt(
+      //   timestamp,
+      //   username,
+      //   partner,
+      //   question,
+      //   sharedDocument
+      // );
     } catch (err) {
       console.error('Failed to submit session', err);
     } finally {
@@ -220,6 +224,10 @@ export function Code() {
       });
 
       const yText = ydoc.getText('monaco');
+      // Only set starter code if document is empty
+      // if (yText.length === 0 && questionStarterCode?.trim().length > 0) {
+      //   yText.insert(0, questionStarterCode);
+      // }
 
       ydocRef.current = ydoc;
       providerRef.current = provider;
@@ -417,6 +425,7 @@ export function Code() {
 
       <div className="rounded-lg overflow-hidden border border-black">
         <Editor
+          defaultValue={questionStarterCode}
           height="350px"
           defaultLanguage="javascript"
           theme="vs"
