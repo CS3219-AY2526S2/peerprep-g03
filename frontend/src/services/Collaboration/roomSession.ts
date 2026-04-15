@@ -30,6 +30,9 @@ export type GetRejoinableRoomSessionResponse = {
 export type ReconnectRoomSessionResponse = {
   roomId?: string;
   questionId?: string;
+  questionTitle?: string;
+  questionDescription?: string;
+  questionStarterCode?: string;
   status?: string;
   partner?: string | null;
   success?: boolean;
@@ -37,6 +40,9 @@ export type ReconnectRoomSessionResponse = {
     roomId: string;
     matchId?: string;
     questionId?: string;
+    questionTitle?: string;
+    questionDescription?: string;
+    questionStarterCode?: string;
     status?: string;
   } | null;
   message?: string;
