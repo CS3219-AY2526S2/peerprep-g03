@@ -328,6 +328,28 @@ export function Code() {
     });
   };
 
+  const mapLanguage = (lang: string) => {
+    switch (lang?.toLowerCase()) {
+      case 'python':
+        return 'python';
+      case 'java':
+        return 'java';
+      case 'c++':
+      case 'cpp':
+        return 'cpp';
+      case 'c':
+        return 'c';
+      case 'javascript':
+      case 'js':
+        return 'javascript';
+      case 'typescript':
+      case 'ts':
+        return 'typescript';
+      default:
+        return 'plaintext';
+    }
+  };
+
   useEffect(() => {
     const handleTabClose = () => {
       if (roomId && roomId !== 'private-room' && username) {
@@ -424,10 +446,13 @@ export function Code() {
       )}
 
       <div className="rounded-lg overflow-hidden border border-black">
+        <p className="text-xs text-gray-500 mb-1">
+          Language: {programmingLanguage}
+        </p>
         <Editor
-          defaultValue={questionStarterCode}
+          
           height="350px"
-          defaultLanguage="javascript"
+          defaultlanguage="javascript"
           theme="vs"
           onMount={handleEditorDidMount}
           options={{
