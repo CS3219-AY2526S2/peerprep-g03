@@ -11,6 +11,7 @@ import Editor, { OnMount } from '@monaco-editor/react';
 import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
 import { WebsocketProvider } from 'y-websocket';
+import { CustomYjsWsProvider } from '../../../../services/Collaboration/customYjsWs';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 
 import {
@@ -43,7 +44,8 @@ export function Code() {
 
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
   const bindingRef = useRef<MonacoBinding | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  //const providerRef = useRef<WebsocketProvider | null>(null);
+  const providerRef = useRef<CustomYjsWsProvider | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const hasInitializedRef = useRef(false);
@@ -177,18 +179,34 @@ export function Code() {
       return;
     }
 
+    // if (!hasInitializedRef.current) {
+    //   const ydoc = new Y.Doc();
+    //   const provider = new WebsocketProvider('ws://localhost:3004', roomId, ydoc);
+    //   const yText = ydoc.getText('monaco');
+
+    //   provider.on('status', (event: { status: string }) => {
+    //     console.log(`WebSocket status: ${event.status}, room: ${roomId}`);
+    //   });
+
+    //   provider.on('connection-error', (err: unknown) => {
+    //     console.error('WebSocket connection error:', err);
+    //   });
+
+    //   ydocRef.current = ydoc;
+    //   providerRef.current = provider;
+    //   yTextRef.current = yText;
+    //   hasInitializedRef.current = true;
+    // }
+
     if (!hasInitializedRef.current) {
       const ydoc = new Y.Doc();
-      const provider = new WebsocketProvider('ws://localhost:3004', roomId, ydoc);
+      const provider = new CustomYjsWsProvider({
+        url: 'ws://localhost:3004',
+        roomId,
+        ydoc,
+      });
+
       const yText = ydoc.getText('monaco');
-
-      provider.on('status', (event: { status: string }) => {
-        console.log(`WebSocket status: ${event.status}, room: ${roomId}`);
-      });
-
-      provider.on('connection-error', (err: unknown) => {
-        console.error('WebSocket connection error:', err);
-      });
 
       ydocRef.current = ydoc;
       providerRef.current = provider;
@@ -198,11 +216,16 @@ export function Code() {
 
     bindingRef.current?.destroy();
 
+    // bindingRef.current = new MonacoBinding(
+    //   yTextRef.current!,
+    //   currentModel,
+    //   new Set([editor]),
+    //   providerRef.current!.awareness
+    // );
     bindingRef.current = new MonacoBinding(
       yTextRef.current!,
       currentModel,
-      new Set([editor]),
-      providerRef.current!.awareness
+      new Set([editor])
     );
 
     editor.onMouseUp(() => {

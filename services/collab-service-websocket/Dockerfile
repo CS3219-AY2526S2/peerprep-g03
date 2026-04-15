@@ -8,4 +8,4 @@ EXPOSE 3004
 
 ENV HOST=0.0.0.0
 ENV PORT=3004
-CMD ["npx", "y-websocket"]
+CMD ["npm", "start"]

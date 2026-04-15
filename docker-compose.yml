@@ -156,9 +156,10 @@ services:
   collab-service-websocket:
     build: ./services/collab-service-websocket
     container_name: collab-service-websocket
+    env_file:
+    - ./services/collab-service-websocket/.env
     depends_on:
       - collab-db
-      - collab-service-rooms
     environment:
       HOST: 0.0.0.0
       PORT: 3004
@@ -167,7 +168,8 @@ services:
       - "3004:3004"
     networks:
       - app-network
-  
+
+
   match-service:
     build: ./services/match-service
     container_name: match-service

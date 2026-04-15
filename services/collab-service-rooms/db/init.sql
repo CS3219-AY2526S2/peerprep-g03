@@ -54,3 +54,10 @@ CREATE TABLE submissions (
     REFERENCES session_users(room_id, user_id)
     ON DELETE CASCADE
 );
+
+
+CREATE TABLE IF NOT EXISTS yjs_room_state (
+  room_id TEXT PRIMARY KEY,
+  doc_state BYTEA NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
