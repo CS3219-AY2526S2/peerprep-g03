@@ -7,6 +7,8 @@ import { reset } from '../../../../features/User/Collaboration/collaborationSlic
 //import { postAttempt } from '../../../../services/Attempts';
 import { useCompletion } from '@ai-sdk/react';
 
+import { getQuestionDetailUser } from '../../../../services/Questions';
+
 import Editor, { OnMount } from '@monaco-editor/react';
 import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
@@ -158,7 +160,9 @@ export function Code() {
       const questionId: string = collabValue.questionId;
       const partnerName: string = collabValue.partner;
       const username: string = authValue.username;
-    //   console.log(collabValue)
+       console.log(collabValue)
+       const details = await getQuestionDetailUser(questionId);
+       console.log(details);
     //   console.log(questionId, "desc" ,questionDescription, "title" ,questionTitle);
 
       try {
@@ -184,7 +188,7 @@ export function Code() {
             body: JSON.stringify({
                 user1_username: username.toLowerCase(),
                 user2_username: partnerName.toLowerCase(),
-                question_text: questionDescription,
+                question_text: questionTitle,
                 submitted_code: sharedDocument,
 
                 // FROM QUESTION SERVICE (MOCKED DATA)
@@ -192,7 +196,7 @@ export function Code() {
                 // programming_language: question.programmingLanguage || "no language",
                 // question_topic: question.topic_tags?.[0] || "no topic",
                 // difficulty: question.difficulty || "no difficulty,"
-                suggested_solution: "Hello world!", //template?.solution_code || "No solution",
+                suggested_solution: details.templates[0].solution_code || "No solution",
                 programming_language: programmingLanguage || "no language",
                 question_topic: questionDescription || "no topic",
                 difficulty: questionDifficulty || "no difficulty",

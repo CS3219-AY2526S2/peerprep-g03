@@ -60,7 +60,7 @@ export function AttemptRecordsTable() {
                 const mapped: AllAttemptRecord[] = data.map((r: any) => ({
                     id: r.id,
                     username: r.user1_id === userId ? r.user1_username : r.user2_username,
-                    questionTitle: r.question_text,
+                    questionTitle: r.question_title,
                     questionTopic: r.question_topic,
                     questionDifficulty: r.difficulty,
                     collaborator: r.user1_id === userId ? r.user2_username : r.user1_username,
