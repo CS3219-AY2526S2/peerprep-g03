@@ -187,7 +187,10 @@ describe('RoomSessionService', () => {
       expect(result).toEqual({
         roomId: 'room-1',
         matchId: 'match-1',
+        questionDescription: 'desc',
         questionId: 'q1',
+        questionStarterCode: 'code',
+        questionTitle: 'Two Sum',
         status: 'active',
         userStatus: 'disconnected',
         partner: 'u2',
