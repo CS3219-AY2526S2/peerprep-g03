@@ -40,6 +40,7 @@ export function Code() {
   const questionDescription = collabValue.questionDescription ?? '';
   const programmingLanguage = collabValue.programmingLanguage ?? '';
   const questionStarterCode = collabValue.questionStarterCode ?? '';
+  const questionDifficulty = collabValue.questionDifficulty ?? '';
   const username = authValue.username ?? '';
 
   const havePartner = !!partner;
@@ -79,111 +80,153 @@ export function Code() {
     };
   };
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current) return;
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+        if (!isDragging.current) return;
 
-      setPos({
-        x: e.clientX - dragOffset.current.x,
-        y: e.clientY - dragOffset.current.y,
-      });
+        setPos({
+            x: e.clientX - dragOffset.current.x,
+            y: e.clientY - dragOffset.current.y,
+        });
+        };
+
+        const handleMouseUp = () => {
+        isDragging.current = false;
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [pos.x, pos.y]);
+
+    const handleAiClick = async () => {
+        if (!bubble || isLoading) return;
+
+        setIsAiOpen(true);
+        const textToExplain = bubble.text;
+        setBubble(null);
+
+        await complete(textToExplain, { body: { context: 'code snippet' } });
     };
 
-    const handleMouseUp = () => {
-      isDragging.current = false;
+    const handleCloseAi = () => {
+        setIsAiOpen(false);
+        setCompletion('');
+        if (isLoading) stop();
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+    const getSharedDocument = () => {
+        return editorRef.current?.getValue() ?? '';
     };
-  }, [pos.x, pos.y]);
 
-  const handleAiClick = async () => {
-    if (!bubble || isLoading) return;
+    const cleanupCollabResources = () => {
+        bindingRef.current?.destroy();
+        bindingRef.current = null;
 
-    setIsAiOpen(true);
-    const textToExplain = bubble.text;
-    setBubble(null);
+        providerRef.current?.destroy();
+        providerRef.current = null;
 
-    await complete(textToExplain, { body: { context: 'code snippet' } });
-  };
+        ydocRef.current?.destroy();
+        ydocRef.current = null;
 
-  const handleCloseAi = () => {
-    setIsAiOpen(false);
-    setCompletion('');
-    if (isLoading) stop();
-  };
+        yTextRef.current = null;
+        hasInitializedRef.current = false;
+    };
 
-  const getSharedDocument = () => {
-    return editorRef.current?.getValue() ?? '';
-  };
+    const handleQuitClick = async () => {
+        try {
+            if (roomId && roomId !== 'private-room' && username) {
+                await disconnectRoomSession(username, roomId);
+            }
+        } catch (err) {
+            console.error('Failed to disconnect room session:', err);
+        } finally {
+            cleanupCollabResources();
+            navigate('/start');
+        }
+    };
 
-  const cleanupCollabResources = () => {
-    bindingRef.current?.destroy();
-    bindingRef.current = null;
+    const handleSubmitClick = async () => {
+      //const timestamp = new Date().toISOString()
+      const sharedDocument = getSharedDocument()
+      
+      // is this needed?
+      const questionId: string = collabValue.questionId;
+      const partnerName: string = collabValue.partner;
+      const username: string = authValue.username;
+    //   console.log(collabValue)
+    //   console.log(questionId, "desc" ,questionDescription, "title" ,questionTitle);
 
-    providerRef.current?.awareness.setLocalStateField('selection', null);
-    providerRef.current?.destroy();
-    providerRef.current = null;
+      try {
+        if (roomId && roomId !== 'private-room') {
+          await submitRoomSession(username, roomId, sharedDocument)
+        }
 
-    ydocRef.current?.destroy();
-    ydocRef.current = null;
+        // // 1. GET question details
+        // const res = await fetch(`http://localhost:3003/questions/${questionId}`, {
+        // headers: {
+        //     Authorization: `Bearer ${authValue.token}`
+        // }
+        // });
 
-    yTextRef.current = null;
-    hasInitializedRef.current = false;
-  };
+        // const question = await res.json();
+        // console.log(question);
 
-  const handleQuitClick = async () => {
-    try {
-      if (roomId && roomId !== 'private-room' && username) {
-        await disconnectRoomSession(username, roomId);
-      }
-    } catch (err) {
-      console.error('Failed to disconnect room session:', err);
-    } finally {
-      cleanupCollabResources();
-      navigate('/start');
-    }
-  };
+        // const template = question.templates?.[0];
 
-  const handleSubmitClick = async () => {
-    const timestamp = new Date().toISOString();
-    const sharedDocument = getSharedDocument();
+        await fetch("http://localhost:3004/records", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user1_username: username.toLowerCase(),
+                user2_username: partnerName.toLowerCase(),
+                question_text: questionDescription,
+                submitted_code: sharedDocument,
 
-    try {
-      if (roomId && roomId !== 'private-room') {
-        await submitRoomSession(username, roomId, sharedDocument);
-      }
+                // FROM QUESTION SERVICE (MOCKED DATA)
+                // suggested_solution: template?.solution_code || "No solution",
+                // programming_language: question.programmingLanguage || "no language",
+                // question_topic: question.topic_tags?.[0] || "no topic",
+                // difficulty: question.difficulty || "no difficulty,"
+                suggested_solution: "Hello world!", //template?.solution_code || "No solution",
+                programming_language: programmingLanguage || "no language",
+                question_topic: questionDescription || "no topic",
+                difficulty: questionDifficulty || "no difficulty",
 
-      // await postAttempt(
-      //   timestamp,
-      //   username,
-      //   partner,
-      //   question,
-      //   sharedDocument
-      // );
-    } catch (err) {
-      console.error('Failed to submit session', err);
-    } finally {
-      cleanupCollabResources();
-      dispatch(reset());
-      localStorage.removeItem('collabSession');
-      navigate('/start');
-    }
-  };
+            }),
+        });
 
-  const handleEditorDidMount: OnMount = (editor) => {
-    editorRef.current = editor;
+        } catch (err) {
+            console.error('Failed to submit session', err)
+        } finally {
+            cleanupCollabResources()
+            dispatch(reset())
+            localStorage.removeItem('collabSession');
+            navigate('/start')
+        }
 
-    const currentModel = editor.getModel();
-    if (!currentModel) {
-      console.error('Monaco model is missing');
-      return;
-    }
+            // Destroy Yjs connections and bindings immediately to prevent further edits after submission
+            // Delete room
+            // Remove redux dispatch(reset());
+            // Save attempt to collab database with status 'submitted'
+
+            // Auto exit partner's room too?
+            // where is the post attempt
+
+        };
+
+    const handleEditorDidMount: OnMount = (editor) => {
+        editorRef.current = editor;
+
+        const currentModel = editor.getModel();
+        if (!currentModel) {
+        console.error('Monaco model is missing');
+        return;
+        }
 
     // if (!hasInitializedRef.current) {
     //   const ydoc = new Y.Doc();

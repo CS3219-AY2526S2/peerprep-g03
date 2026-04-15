@@ -27,6 +27,7 @@ PeerPrep follows a **microservices-per-domain pattern**, where each service owns
 | **Collab Rooms** | `3002` | Session metadata & history |
 | **Match Service** | `3003` | Peer matching via Redis |
 | **Collab WebSocket** | `3012` | Real-time code sync |
+| **Records Service** | `3004` | History bank for past Collab Sessions |
 | **AI Service** | `3006` | Gemini-powered hints & explanations |
 
 ---
@@ -41,6 +42,7 @@ PeerPrep follows a **microservices-per-domain pattern**, where each service owns
 | question-service | PostgreSQL |
 | collab-service | PostgreSQL |
 | match-service | Redis |
+| records-service | PostgreSQL |
 
 ---
 
@@ -156,6 +158,13 @@ docker exec -it question-service node scripts/seedQuestions.mjs
 
 ---
 
+### Records Service (`3004`)
+
+* History Recording
+* PostgreSQL-backed
+
+---
+
 ### 🤖 AI Service (`3006`)
 
 * Integrates with Gemini API
@@ -227,6 +236,7 @@ volumes:
   user-db-data:
   question-db-data:
   collab-db-data:
+  records-db-data:
 ```
 
 ---
