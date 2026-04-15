@@ -156,6 +156,47 @@ async function getQuestionById(id, adminId = null) {
         client.release();
     }
 }
+async function getQuestionByIdUser(id) {
+    const client = await pool.connect();
+    try {
+        // We still use a transaction because we are performing two dependent SELECTs
+        await client.query('BEGIN');
+
+        // 1. Fetch the main question data
+        const questionRes = await client.query(
+            "SELECT * FROM questions WHERE id = $1 AND is_deleted = FALSE", 
+            [id]
+        );
+
+        if (questionRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const question = questionRes.rows[0];
+
+        // 2. Fetch the related templates (languages, code, etc.)
+        const templatesRes = await client.query(
+            "SELECT language, starter_code, solution_code FROM question_templates WHERE question_id = $1", 
+            [id]
+        );
+
+        await client.query('COMMIT');
+
+        // Return combined object
+        return { 
+            ...question, 
+            templates: templatesRes.rows 
+        };
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Error in getQuestionById:", err);
+        throw err;
+    } finally {
+        client.release();
+    }
+}
 // Update an existing question
 async function updateQuestion(id, title, topic, difficulty, description, templates = [], adminId) {
     const topicArray = Array.isArray(topic) ? topic : [topic];
@@ -303,6 +344,7 @@ module.exports = {
   createQuestion,
   getAllQuestions,
   getQuestionById,
+  getQuestionByIdUser,
   updateQuestion,
   deleteQuestion,
   findRandom,

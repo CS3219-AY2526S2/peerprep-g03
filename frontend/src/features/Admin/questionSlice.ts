@@ -5,7 +5,8 @@ import {
     createQuestion as createQuestionApi, 
     updateQuestion as updateQuestionApi, 
     deleteQuestion,
-    releaseQuestionLock
+    releaseQuestionLock,
+    getQuestionDetailUser
 } from '../../services/Questions';
 const initialStateValue = { 
     id: null, 
@@ -21,6 +22,18 @@ export const fetchQuestionDetail = createAsyncThunk(
     async (questionId, { rejectWithValue }) => {
         try {
             const data = await getQuestionDetail(questionId);
+            return data; 
+        } catch (err: any) {
+            // This captures the 409 error message: "This question is currently being edited by..."
+            return rejectWithValue(err.response?.data?.message || "Failed to fetch question");
+        }
+    }
+);
+export const fetchQuestionDetailUser = createAsyncThunk(
+    'question/fetchByIdUser',
+    async (questionId, { rejectWithValue }) => {
+        try {
+            const data = await getQuestionDetailUser(questionId);
             return data; 
         } catch (err: any) {
             // This captures the 409 error message: "This question is currently being edited by..."
@@ -166,6 +179,20 @@ const questionSlice = createSlice({
         state.serverError = null;
     })
     .addCase(fetchQuestionDetail.rejected, (state, action: any) => {
+        state.stateStatus = 'failed';
+        // Capture the lock error or any other server error
+        state.serverError = action.payload; 
+    })
+    .addCase(fetchQuestionDetailUser.pending, (state) => {
+    state.stateStatus = 'loading';
+    state.serverError = null; // Clear previous errors
+    })
+    .addCase(fetchQuestionDetailUser.fulfilled, (state, action) => {
+        state.stateStatus = 'succeeded';
+        state.value = action.payload; 
+        state.serverError = null;
+    })
+    .addCase(fetchQuestionDetailUser.rejected, (state, action: any) => {
         state.stateStatus = 'failed';
         // Capture the lock error or any other server error
         state.serverError = action.payload; 
